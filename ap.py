@@ -29,7 +29,7 @@ LAT, LON = -3.947760, 119.810237
 
 # ------------------ PETA ------------------
 with st.expander("🗺 Peta Curah Hujan Real‑time"):
-    m = folium.Map(location=[LAT, LON], zoom_start=13)
+    m = folium.Map(location=[LAT, LON], zoom_start=13, control_scale=True)
     OWM_API_KEY = st.secrets.get("OWM_API_KEY", "")
     if OWM_API_KEY:
         tile_url = (
@@ -45,7 +45,7 @@ with st.expander("🗺 Peta Curah Hujan Real‑time"):
             opacity=0.6
         ).add_to(m)
     folium.Marker([LAT, LON], tooltip="📍 Kelurahan Lakessi").add_to(m)
-    st_folium(m, width=700, height=400)
+    st_folium(m, width="100%", height=400, returned_objects=[])
 
 # ------------------ DATA CUACA ------------------
 weather_url = (
@@ -77,35 +77,31 @@ def highlight_irigasi(row):
     color = '#ffe6e6' if row["Rekomendasi Irigasi"] == "🚿 Irigasi Diperlukan" else '#ffffff'
     return ['background-color: {}'.format(color)] * len(row)
 
-# ------------------ TAMPILKAN TABEL ------------------
-st.dataframe(
-    df.style
-      .apply(highlight_irigasi, axis=1)
-      .format({
-          "Curah Hujan (mm)": "{:.1f}",
-          "Suhu Maks (°C)": "{:.1f}",
-          "Suhu Min (°C)": "{:.1f}",
-          "Kelembapan (%)": "{:.1f}"
-      }),
-    use_container_width=True
-)
-
+# ------------------ TABEL DATA ------------------
 with st.expander("📋 Tabel Data & Rekomendasi Harian"):
-    st.dataframe(df.style.apply(highlight_irigasi, axis=1), use_container_width=True)
+    st.dataframe(
+        df.style.apply(highlight_irigasi, axis=1).format({
+            "Curah Hujan (mm)": "{:.1f}",
+            "Suhu Maks (°C)": "{:.1f}",
+            "Suhu Min (°C)": "{:.1f}",
+            "Kelembapan (%)": "{:.1f}"
+        }),
+        use_container_width=True
+    )
     st.download_button("⬇ Download CSV", data=df.to_csv(index=False), file_name="data_irigasi_lakessi.csv")
 
 # ------------------ GRAFIK ------------------
 with st.expander("📊 Grafik Curah Hujan Harian"):
     fig = px.bar(df, x="Tanggal", y="Curah Hujan (mm)", color="Curah Hujan (mm)", title="Curah Hujan Harian")
     fig.add_hline(y=threshold, line_dash="dash", line_color="red", annotation_text=f"Batas Irigasi ({threshold} mm)")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
 
 with st.expander("🌡 Grafik Suhu & Kelembapan Harian"):
     fig2 = px.line(df, x="Tanggal", y=["Suhu Maks (°C)", "Suhu Min (°C)"], markers=True, title="Suhu Harian")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True, config={"responsive": True})
 
     fig3 = px.line(df, x="Tanggal", y="Kelembapan (%)", title="Kelembapan Harian", markers=True)
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, use_container_width=True, config={"responsive": True})
 
 # ------------------ ESTIMASI TANAM & PANEN ------------------
 with st.expander("🌱 Estimasi Waktu Tanam & Panen"):
