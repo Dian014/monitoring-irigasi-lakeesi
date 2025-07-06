@@ -5,78 +5,79 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Monitoring Irigasi Desa Lakessi", layout="wide")
 
-# CSS padding & spacing
+# Header Aplikasi
+st.title("🚜 Prediksi Curah Hujan dan Jadwal Irigasi - Desa Lakessi")
 st.markdown("""
-<style>
-.main {padding:2rem;}
-h1, h2 {color:#2e7d32;}
-.highlight {background-color:#a5d6a7;padding:8px;border-radius:4px;margin:5px 0;}
-footer {text-align:center;color:gray;font-size:0.8rem;}
-</style>
-""", unsafe_allow_html=True)
+Desa Lakessi, Kabupaten Sidenreng Rappang (Sidrap) memiliki potensi pertanian yang tinggi.  
+Aplikasi ini membantu memantau cuaca dan kebutuhan irigasi **tanpa perlu ke lapangan**.  
+Dikembangkan oleh **Dian Eka Putra** | 📧 ekaputradian01@gmail.com | 📱 085654073752
+""")
 
-# Header gambar
-st.image(
-    "https://images.unsplash.com/photo-1592153823269-812be9a1b5a6?auto=format&fit=crop&w=1350&q=80",
-    use_container_width=True,
-    caption="Irigasi Sawah di Desa Lakessi"
-)
+# Tambahkan Gambar
+st.image("https://upload.wikimedia.org/wikipedia/commons/6/6b/Irrigation_System_in_Paddy_Field.JPG", 
+         caption="Ilustrasi Irigasi Sawah", use_container_width=True)
 
-st.title("📊 Prediksi Curah Hujan & Rekomendasi Irigasi – Desa Lakessi")
-st.write("Aplikasi ini menampilkan prakiraan curah hujan harian dan membantu menentukan apakah perlu melakukan irigasi.")
-
+# Koordinat Desa Lakessi
+latitude = -4.02
+longitude = 119.44
 
 # Ambil data cuaca
-latitude, longitude = -4.02, 119.44
-url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=precipitation_sum&timezone=auto"
-data = requests.get(url).json()
-df = pd.DataFrame({"Tanggal": pd.to_datetime(data["daily"]["time"]),
-                   "Curah Hujan (mm)": data["daily"]["precipitation_sum"]})
+url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,relative_humidity_2m_mean,weathercode&timezone=auto"
+response = requests.get(url)
+data = response.json()
 
-# Slider threshold & jangka waktu grafik
-threshold = st.sidebar.slider("🔧 Batas minimum curah hujan (mm):", 0, 20, 5)
-days = st.sidebar.selectbox("Tampilkan untuk hari ke depan:", [3, 5, 7, len(df)], index=2)
+# Buat DataFrame utama
+df = pd.DataFrame({
+    "Tanggal": pd.to_datetime(data["daily"]["time"]),
+    "Curah Hujan (mm)": data["daily"]["precipitation_sum"],
+    "Suhu Maks (°C)": data["daily"]["temperature_2m_max"],
+    "Suhu Min (°C)": data["daily"]["temperature_2m_min"],
+    "Kelembapan (%)": data["daily"]["relative_humidity_2m_mean"]
+})
 
-df_show = df.head(days)
+# Slider threshold
+threshold = st.slider("🌧️ Atur batas curah hujan untuk irigasi (mm):", 0, 20, 5)
 
-col1, col2 = st.columns([3, 2])
+# Tampilkan Tabel
+st.subheader("📊 Data Cuaca Harian Desa Lakessi")
+st.dataframe(df, use_container_width=True)
 
-with col1:
-    st.subheader("📈 Grafik Curah Hujan")
-    fig, ax = plt.subplots(figsize=(7,4))
-    ax.plot(df_show["Tanggal"], df_show["Curah Hujan (mm)"], marker="o", color="#2e7d32", label="Curah Hujan")
-    ax.axhline(threshold, color="red", linestyle="--", label=f"Threshold ({threshold} mm)")
-    ax.set_xlabel("Tanggal"); ax.set_ylabel("Curah Hujan (mm)")
-    ax.legend(); plt.xticks(rotation=45)
-    st.pyplot(fig)
-    st.markdown("""
-    **Cara Membaca Grafik**:
-    - 🔵 Titik hijau = prakiraan curah hujan.
-    - 🔴 Garis merah = batas irigasi.
-    - Tanda ❗ berarti irigasi disarankan jika titik di bawah garis merah.
-    """)
+# Grafik Curah Hujan
+st.subheader("📈 Grafik Curah Hujan Harian")
+fig, ax = plt.subplots()
+ax.plot(df["Tanggal"], df["Curah Hujan (mm)"], marker='o', label='Curah Hujan')
+ax.axhline(y=threshold, color='r', linestyle='--', label=f'Threshold: {threshold} mm')
+ax.set_xlabel("Tanggal")
+ax.set_ylabel("Curah Hujan (mm)")
+ax.set_title("Grafik Curah Hujan Harian Desa Lakessi")
+plt.xticks(rotation=45)
+ax.legend()
+st.pyplot(fig)
 
-with col2:
-    st.subheader("💧 Rekomendasi Irigasi")
-    for _, r in df_show.iterrows():
-        txt = f"{r['Tanggal'].date()}: {r['Curah Hujan (mm)']:.2f} mm "
-        if r['Curah Hujan (mm)'] < threshold:
-            st.markdown(f"<div class='highlight'>🔴 {txt}→ *Irigasi diperlukan*</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"🟢 {txt}→ Irigasi tidak diperlukan", unsafe_allow_html=True)
-
-# Dummy info tanah
-st.subheader("🌱 Info Tambahan Tanah")
-st.write("- Kelembapan: _(data sensor belum tersedia)_")
-st.write("- Jenis tanah: _Andosol (Sangat subur, cocok padi)_")
-
-# Footer kontak
-st.markdown("---")
+# Keterangan Grafik
 st.markdown("""
-**Dian Eka Putra**  
-📧 ekaputradian01@gmail.com  
-📱 WA 085654073752  
+🔴 Garis merah putus-putus menunjukkan ambang batas curah hujan.  
+Jika curah hujan **di bawah garis ini**, maka **irigasi diperlukan**.
+""")
 
-*Proyek KKN Mandiri – Desa Lakessi, Sidrap*  
-""", unsafe_allow_html=True)
-st.markdown("<footer>© 2025 Desa Lakessi</footer>", unsafe_allow_html=True)
+# Rekomendasi Irigasi
+st.subheader("💧 Rekomendasi Irigasi Harian")
+for i, row in df.iterrows():
+    if row["Curah Hujan (mm)"] < threshold:
+        st.write(f"📅 {row['Tanggal'].date()} → **Irigasi Diperlukan** (Curah hujan: {row['Curah Hujan (mm)']} mm)")
+    else:
+        st.write(f"📅 {row['Tanggal'].date()} → Tidak Perlu Irigasi (Curah hujan: {row['Curah Hujan (mm)']} mm)")
+
+# Tips Otomatis
+st.subheader("💡 Tips Otomatis Berdasarkan Cuaca")
+for i, row in df.iterrows():
+    if row["Suhu Maks (°C)"] > 33:
+        st.write(f"🔥 {row['Tanggal'].date()} → Waspadai kekeringan, suhu tinggi.")
+    elif row["Kelembapan (%)"] > 85:
+        st.write(f"🌧️ {row['Tanggal'].date()} → Udara sangat lembap, awasi hama/jamur.")
+    else:
+        st.write(f"✅ {row['Tanggal'].date()} → Cuaca normal, cocok untuk kegiatan tani.")
+
+# Footer
+st.markdown("---")
+st.markdown("📍 Aplikasi ini dikembangkan untuk mendukung petani di **Desa Lakessi, Sidrap** agar lebih mudah mengatur irigasi secara cerdas berbasis cuaca.")
