@@ -16,7 +16,6 @@ st.set_page_config(
 
 # ------------------ HEADER ------------------
 st.title("🌾 Sistem Monitoring Irigasi & Pertanian Cerdas - Kelurahan Lakessi")
-
 st.markdown("""
 Aplikasi ini memantau cuaca harian, memberi rekomendasi irigasi, serta menampilkan estimasi waktu tanam dan panen berdasarkan data real-time.
 Dilengkapi dengan prediksi hasil panen dan estimasi pendapatan untuk lahan sawah di Kelurahan Lakessi, Kecamatan Maritengngae, Kabupaten Sidrap, Sulawesi Selatan.
@@ -30,7 +29,7 @@ LAT, LON = -3.947760, 119.810237
 
 # ------------------ PETA ------------------
 with st.expander("🗺 Peta Curah Hujan Real‑time"):
-    m = folium.Map(location=[LAT, LON], zoom_start=13, height=400)
+    m = folium.Map(location=[LAT, LON], zoom_start=13)
     OWM_API_KEY = st.secrets.get("OWM_API_KEY", "")
     if OWM_API_KEY:
         tile_url = (
@@ -69,7 +68,6 @@ df = pd.DataFrame({
 
 # ------------------ REKOMENDASI IRIGASI ------------------
 threshold = st.sidebar.slider("💧 Batas curah hujan untuk irigasi (mm):", 0, 20, 5)
-
 df["Rekomendasi Irigasi"] = df["Curah Hujan (mm)"].apply(
     lambda x: "🚿 Irigasi Diperlukan" if x < threshold else "✅ Tidak Perlu Irigasi"
 )
@@ -80,26 +78,15 @@ def highlight_irigasi(row):
     return ['background-color: {}'.format(color)] * len(row)
 
 with st.expander("📋 Tabel Data & Rekomendasi Harian"):
-    st.dataframe(
-        df.style
-        .apply(highlight_irigasi, axis=1)
-        .format({
-            "Curah Hujan (mm)": "{:.1f}",
-            "Suhu Maks (°C)": "{:.1f}",
-            "Suhu Min (°C)": "{:.1f}",
-            "Kelembapan (%)": "{:.1f}"
-        }),
-        use_container_width=True
-    )
+    st.dataframe(df.style.apply(highlight_irigasi, axis=1), use_container_width=True)
     st.download_button("⬇ Download CSV", data=df.to_csv(index=False), file_name="data_irigasi_lakessi.csv")
 
-# ------------------ GRAFIK CURAH HUJAN ------------------
+# ------------------ GRAFIK ------------------
 with st.expander("📊 Grafik Curah Hujan Harian"):
     fig = px.bar(df, x="Tanggal", y="Curah Hujan (mm)", color="Curah Hujan (mm)", title="Curah Hujan Harian")
     fig.add_hline(y=threshold, line_dash="dash", line_color="red", annotation_text=f"Batas Irigasi ({threshold} mm)")
     st.plotly_chart(fig, use_container_width=True)
 
-# ------------------ GRAFIK SUHU & KELEMBAPAN ------------------
 with st.expander("🌡 Grafik Suhu & Kelembapan Harian"):
     fig2 = px.line(df, x="Tanggal", y=["Suhu Maks (°C)", "Suhu Min (°C)"], markers=True, title="Suhu Harian")
     st.plotly_chart(fig2, use_container_width=True)
@@ -116,8 +103,8 @@ with st.expander("🌱 Estimasi Waktu Tanam & Panen"):
     🌾 Estimasi waktu panen: {waktu_panen} (berdasarkan siklus padi 100 hari)
     """)
 
-# ------------------ PREDIKSI HASIL PANEN ------------------
-with st.expander("🤖 Prediksi Hasil Panen Berdasarkan Cuaca"):
+# ------------------ PREDIKSI HASIL PANEN OTOMATIS ------------------
+with st.expander("🤖 Prediksi Hasil Panen Otomatis (AI + Cuaca)"):
     historical_df = pd.DataFrame({
         "Curah Hujan (mm)": [3.2, 1.0, 5.5, 0.0, 6.0],
         "Suhu Maks (°C)": [30, 32, 29, 31, 33],
@@ -133,6 +120,30 @@ with st.expander("🤖 Prediksi Hasil Panen Berdasarkan Cuaca"):
     prediksi = model.predict(X_now)[0]
     st.metric("📈 Prediksi Hasil Panen Saat Ini (kg/ha)", f"{prediksi:,.0f}")
 
+# ------------------ ESTIMASI PENDAPATAN OTOMATIS ------------------
+with st.expander("💰 Estimasi Pendapatan Otomatis"):
+    luas_sawah_ha = 100
+    harga_gabah = 6700  # Harga real di Sidrap
+    total_produksi = prediksi * luas_sawah_ha
+    pendapatan = total_produksi * harga_gabah
+    st.success(f"🧮 Estimasi Pendapatan (100 ha): Rp {pendapatan:,.0f}")
+
+# ------------------ HITUNG PINTAR MANUAL ------------------
+with st.expander("📝 Hitung Pintar Manual"):
+    curah = st.number_input("Curah Hujan (mm)", value=5.0)
+    suhu = st.number_input("Suhu Maks (°C)", value=31.0)
+    kelembapan = st.number_input("Kelembapan (%)", value=80.0)
+    luas_user = st.number_input("Luas Sawah (ha)", value=1.0)
+    harga_user = st.number_input("Harga Gabah (Rp/kg)", value=6700)
+
+    prediksi_manual = model.predict(np.array([[curah, suhu, kelembapan]]))[0]
+    hasil_user = prediksi_manual * luas_user
+    pendapatan_user = hasil_user * harga_user
+
+    st.metric("📊 Prediksi Panen (kg/ha)", f"{prediksi_manual:,.0f}")
+    st.metric("💵 Total Produksi (kg)", f"{hasil_user:,.0f}")
+    st.success(f"💰 Estimasi Pendapatan Anda: Rp {pendapatan_user:,.0f}")
+
 # ------------------ TIPS PERTANIAN ------------------
 with st.expander("🧠 Tips Pertanian Harian Otomatis"):
     for _, row in df.iterrows():
@@ -146,14 +157,6 @@ with st.expander("🧠 Tips Pertanian Harian Otomatis"):
         if not tips:
             tips.append("Kondisi ideal untuk pertumbuhan padi")
         st.markdown(f"📅 {row['Tanggal'].date()}: {'; '.join(tips)}")
-
-# ------------------ ESTIMASI PENDAPATAN ------------------
-with st.expander("💰 Estimasi Pendapatan"):
-    luas_sawah_ha = 100  # Asumsi luas sawah
-    harga_gabah = 6500   # Harga gabah per kg (realistis per Juli 2025)
-    total_produksi = prediksi * luas_sawah_ha
-    pendapatan = total_produksi * harga_gabah
-    st.success(f"🌾 Total Produksi: {total_produksi:,.0f} kg\n\n💵 Estimasi Pendapatan: Rp {pendapatan:,.0f}")
 
 # ------------------ FOOTER ------------------
 st.markdown("---")
