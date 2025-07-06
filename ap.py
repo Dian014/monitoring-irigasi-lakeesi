@@ -3,72 +3,73 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Monitoring Irigasi Desa Lakessi", layout="wide")
+# Mengatur layout aplikasi
+st.set_page_config(
+    page_title="Monitoring Irigasi Desa Lakessi",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Gambar header
+# Style CSS
+st.markdown("""
+<style>
+    .highlight {background-color: #a5d6a7; padding: 10px; border-radius: 5px; margin-bottom: 10px;}
+    footer {text-align: center; color: grey; font-size: 0.8rem;}
+</style>
+""", unsafe_allow_html=True)
+
+# Gambar header (pilih salah satu URL dari carousel)
 st.image(
-    "https://images.unsplash.com/photo-1592153823269-812be9a1b5a6",
+    "https://images.app.goo.gl/pEAPbsG81Ph6une78",
     use_container_width=True,
-    caption="Sistem Irigasi untuk Pertanian di Desa Lakessi"
+    caption="Sistem Irigasi Sawah"
 )
 
-# Judul utama
-st.markdown(
-    "<h1 style='text-align: center; color: #2e7d32;'>📊 Monitoring Curah Hujan & Rekomendasi Irigasi Desa Lakessi</h1>",
-    unsafe_allow_html=True
-)
+# Judul dan deskripsi
+st.title("🌧️ Prediksi Curah Hujan & Irigasi Desa Lakessi")
+st.write("Aplikasi ini membantu petani dan pengelola desa memonitor curah hujan dan rekomendasi irigasi secara real-time.")
 
-# Koordinat Desa Lakessi (estimasi)
-latitude = -4.02
-longitude = 119.44
-
-# Ambil data cuaca dari Open-Meteo API
+# Ambil data dari Open-Meteo
+latitude, longitude = -4.02, 119.44
 url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=precipitation_sum&timezone=auto"
-response = requests.get(url)
-data = response.json()
-
-# Ambil data curah hujan harian
-dates = data['daily']['time']
+data = requests.get(url).json()
+dates = pd.to_datetime(data['daily']['time'])
 precipitation = data['daily']['precipitation_sum']
-df = pd.DataFrame({
-    'Tanggal': pd.to_datetime(dates),
-    'Curah Hujan (mm)': precipitation
-})
+df = pd.DataFrame({"Tanggal": dates, "Curah Hujan (mm)": precipitation})
 
-# Slider untuk menentukan ambang batas irigasi
-threshold = st.slider("🔧 Atur batas curah hujan untuk irigasi (mm):", 0, 20, 5)
+# Slider threshold
+threshold = st.sidebar.slider("Threshold curah hujan (mm):", min_value=0, max_value=20, value=5)
 
-# Layout: Dua kolom
-col1, col2 = st.columns([2, 1])
+# Layout dua kolom
+col1, col2 = st.columns([3, 1])
 
-# Kolom kiri: Tabel & grafik
 with col1:
-    st.subheader("📅 Data Curah Hujan Harian")
-    st.dataframe(df, use_container_width=True)
-
-    # Grafik curah hujan
-    fig, ax = plt.subplots()
-    ax.plot(df['Tanggal'], df['Curah Hujan (mm)'], marker='o', color='green')
-    ax.axhline(y=threshold, color='red', linestyle='--', label=f'Threshold: {threshold} mm')
-    ax.set_xlabel('Tanggal')
-    ax.set_ylabel('Curah Hujan (mm)')
-    ax.set_title('Grafik Curah Hujan Harian')
-    plt.xticks(rotation=45)
+    st.subheader("📊 Grafik Curah Hujan Harian")
+    fig, ax = plt.subplots(figsize=(8,4))
+    ax.plot(df['Tanggal'], df['Curah Hujan (mm)'], marker='o', color="#2e7d32")
+    ax.axhline(y=threshold, color='r', linestyle='--', label=f'Threshold = {threshold} mm')
+    ax.set_xlabel("Tanggal")
+    ax.set_ylabel("Curah Hujan (mm)")
     ax.legend()
     st.pyplot(fig)
 
-# Kolom kanan: Rekomendasi Irigasi
 with col2:
-    st.subheader("🚿 Rekomendasi Irigasi")
-    for i, row in df.iterrows():
+    st.subheader("🚰 Rekomendasi Irigasi")
+    for _, row in df.iterrows():
+        msg = f"{row['Tanggal'].date()}: Curah hujan {row['Curah Hujan (mm)']:.2f} mm"
         if row['Curah Hujan (mm)'] < threshold:
-            st.markdown(f"<span style='color: red;'>{row['Tanggal'].date()}: 💧 Irigasi diperlukan ({row['Curah Hujan (mm)']} mm)</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='highlight'>🔴 {msg} → Irigasi diperlukan</div>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<span style='color: green;'>{row['Tanggal'].date()}: ✅ Tidak perlu irigasi ({row['Curah Hujan (mm)']} mm)</span>", unsafe_allow_html=True)
+            st.markdown(f"🟢 {msg} → Tidak perlu irigasi", unsafe_allow_html=True)
 
-# Footer
+# Footer kontak & credit
 st.markdown("---")
-st.markdown(
-    "<small>🌾 Aplikasi ini dibuat untuk Program KKN Mandiri di Desa Lakessi, Kecamatan Maritengngae, Kabupaten Sidrap.<br>📬 Kontak: <a href='mailto:ekaputradian01@gmail.com'>ekaputradian01@gmail.com</a></small>",
-    unsafe_allow_html=True
-)
+st.markdown("""
+**Dian Eka Putra**  
+📧 ekaputradian01@gmail.com  
+📱 WA 085654073752  
+
+*Proyek KKN Mandiri – Desa Lakessi, Kecamatan Maritenggae, Kabupaten Sidrap*  
+""", unsafe_allow_html=True)
+
+st.markdown("<footer>© 2025 Desa Lakessi</footer>", unsafe_allow_html=True)
