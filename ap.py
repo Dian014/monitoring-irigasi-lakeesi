@@ -79,4 +79,4 @@ with col2:
 
 # Footer info kontak
 st.markdown("---")
-st.markdown("© 2025 KKN Mandiri Desa Lakeesi | Dibuat oleh [Nama Kamu] | Email: kamu@email.com")
+st.markdown("© 2025 KKN Mandiri Desa Lakessi | Dibuat oleh Dian Eka Putra | Email: ekaputradian01@gmail.com")
