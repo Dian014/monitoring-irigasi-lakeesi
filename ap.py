@@ -165,7 +165,7 @@ with st.expander("🧠 Tips Pertanian Harian Otomatis"):
             tips.append("Tingkatkan kewaspadaan terhadap penyakit jamur")
         if not tips:
             tips.append("Kondisi ideal untuk pertumbuhan padi")
-        st.markdown(f"📅 {row['Tanggal'].date()}: {'; '.join(tips)}")
+        st.markdown(f" {row['Tanggal'].date()}: {'; '.join(tips)}")
 
 # ------------------ FOOTER ------------------
 st.markdown("---")
