@@ -1,79 +1,129 @@
 import streamlit as st
-import requests, pandas as pd, plotly.express as px, folium
+import requests
+import pandas as pd
+import plotly.express as px
+import folium
 from streamlit_folium import st_folium
-from datetime import date, timedelta
 
-st.set_page_config(page_title="🌾 Panel Prakiraan Irigasi Desa Lakessi", layout="wide")
-st.markdown("## 🌤 Aplikasi Prediktif Cuaca & Irigasi – Desa Lakessi, Sidrap")
+# ------------------ CONFIG ------------------
+st.set_page_config(
+    page_title="📡 Sistem Monitoring Irigasi & Pertanian Lakessi",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Tampilan gambar pertanian
-st.image(["turn0image0","turn0image1","turn0image3","turn0image5"], caption="👨‍🌾 Sawah & Pertanian Desa Lakessi", use_column_width=True)
+# ------------------ HEADER GAMBAR ------------------
+st.image(
+    "https://upload.wikimedia.org/wikipedia/commons/2/2a/Sawah_di_Sulawesi_Selatan.jpg",
+    caption="📍 Persawahan di Sulawesi Selatan (Sumber: Wikimedia Commons)",
+    use_column_width=True
+)
 
-LAT, LON = -4.012579, 119.472102
-OWM = st.secrets.get("OWM_API_KEY", "")
+# ------------------ HEADER ------------------
+st.title("🌾 Sistem Monitoring Irigasi & Pertanian Cerdas - Desa Lakessi")
+st.markdown("""
+Aplikasi ini memantau *cuaca harian, memberi **rekomendasi irigasi, serta menampilkan estimasi **waktu tanam dan panen* berdasarkan *data real-time* di wilayah *Desa Lakessi, Sidrap*.
 
-hari = st.sidebar.slider("Prakiraan cuaca ke depan (hari):", 1, 7, 5)
-threshold = st.sidebar.slider("Ideal curah hujan minimal (mm):", 10, 50, 20)
+🧑‍💻 Developer: *Dian Eka Putra*  
+📧 ekaputradian01@gmail.com | 📱 085654073752
+""")
 
-@st.cache_data(ttl=300)
-def fetch(days):
-    url = "https://api.open-meteo.com/v1/forecast"
-    params = {"latitude":LAT,"longitude":LON,"daily":"temperature_2m_min,temperature_2m_max,precipitation_sum,relative_humidity_2m_mean","forecast_days":days,"timezone":"auto"}
-    r = requests.get(url,params=params); r.raise_for_status()
-    d = r.json()["daily"]
-    return pd.DataFrame({"Tanggal":pd.to_datetime(d["time"]),"Hujan":d["precipitation_sum"],"SuhuMax":d["temperature_2m_max"],"SuhuMin":d["temperature_2m_min"],"Kelembapan":d["relative_humidity_2m_mean"]})
+# ------------------ KOORDINAT DESA ------------------
+LAT, LON = -3.947760, 119.810237  # Koordinat Desa Lakessi (dari Google Maps)
 
-df = fetch(hari)
+# ------------------ PETA ------------------
+with st.expander("🗺 Peta Curah Hujan Real‑time"):
+    map_height = 400
+    m = folium.Map(location=[LAT, LON], zoom_start=13, height=map_height)
+    OWM_API_KEY = st.secrets.get("OWM_API_KEY", "")
 
-# Peta tanpa spasi kosong
-st.subheader("🗺 Peta Infrastruktur & Curah Hujan Prakiraan")
-m = folium.Map(location=[LAT,LON],zoom_start=13)
-if OWM:
-    folium.TileLayer(tiles=f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={OWM}",attr="OpenWeatherMap",overlay=True,opacity=0.6).add_to(m)
-folium.CircleMarker([LAT,LON],radius=6,color="blue",fill=True).add_to(m)
-st_folium(m,width="100%",height=250,returned_objects=[])
+    if OWM_API_KEY:
+        tile_url = (
+            "https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png"
+            f"?appid={OWM_API_KEY}"
+        )
+        folium.TileLayer(
+            tiles=tile_url,
+            attr="© OpenWeatherMap",
+            name="Curah Hujan",
+            overlay=True,
+            control=True,
+            opacity=0.6
+        ).add_to(m)
+    folium.Marker([LAT, LON], tooltip="📍 Desa Lakessi").add_to(m)
+    st_folium(m, width=700, height=map_height)
 
-# Data dan rekomendasi
-df["Irigasi"] = df["Hujan"].apply(lambda x:f"🚿 Irigasi" if x<threshold else "✅ Optimal")
-st.markdown("### 📋 Forecast & Rekomendasi Cuaca")
-st.dataframe(df, use_container_width=True)
-st.download_button("⬇ Unduh Data CSV", df.to_csv(index=False).encode(), "forecast_lakessi.csv", "text/csv")
+# ------------------ DATA CUACA ------------------
+weather_url = (
+    f"https://api.open-meteo.com/v1/forecast?"
+    f"latitude={LAT}&longitude={LON}&"
+    "daily=temperature_2m_min,temperature_2m_max,precipitation_sum,relative_humidity_2m_mean&"
+    "timezone=auto"
+)
+resp = requests.get(weather_url)
+data = resp.json()
 
-# Grafik dengan legenda
-st.subheader("📊 Grafik Interaktif")
-fig1 = px.bar(df,x="Tanggal",y="Hujan",title="Prakiraan Curah Hujan",color_discrete_sequence=["skyblue"])
-fig1.add_hline(y=threshold,line_dash="dash",line_color="red")
-fig2 = px.line(df,x="Tanggal",y=["SuhuMax","SuhuMin"],markers=True,title="Suhu Harian (°C)")
-fig3 = px.line(df,x="Tanggal",y="Kelembapan",markers=True,color_discrete_sequence=["green"],title="Kelembapan Harian (%)")
-st.plotly_chart(fig1,use_container_width=True); st.caption("🔴 Threshold curah hujan")
-st.plotly_chart(fig2,use_container_width=True)
-st.plotly_chart(fig3,use_container_width=True)
+df = pd.DataFrame({
+    "Tanggal": pd.to_datetime(data["daily"]["time"]),
+    "Curah Hujan (mm)": data["daily"]["precipitation_sum"],
+    "Suhu Maks (°C)": data["daily"]["temperature_2m_max"],
+    "Suhu Min (°C)": data["daily"]["temperature_2m_min"],
+    "Kelembapan (%)": data["daily"]["relative_humidity_2m_mean"]
+})
 
-# Tanam & Panen otomatis
-def detect(df):
-    for i in range(len(df)-2):
-        s = df.iloc[i:i+3]
-        if all(s["Hujan"]>=threshold) and 25<=s["SuhuMax"].mean()<=33 and s["Kelembapan"].mean()>75:
-            return s.iloc[0]["Tanggal"].date()
-    return None
-tanam = detect(df)
-panen = tanam + timedelta(days=110) if tanam else None
-st.subheader("🌱 Estimasi Musim Tanam & Panen Padi")
-if tanam:
-    st.success(f"📌 Tanam: {tanam:%d %b %Y}")
-    st.info(f"🌾 Panen: {panen:%d %b %Y}")
-else:
-    st.warning("📅 Kondisi belum ideal untuk tanam padi dalam periode prakiraan.")
+# ------------------ PENGATURAN & REKOMENDASI ------------------
+threshold = st.sidebar.slider("💧 Batas curah hujan untuk irigasi (mm):", 0, 20, 5)
 
-# Tips harian berdasarkan data
-st.subheader("📝 Tips Harian Otomatis")
-for idx,r in df.iterrows():
-    tips=[]
-    if r.Hujan<threshold: tips.append("irigasi")
-    if r.SuhuMax>33: tips.append("panen awal")
-    if r.Kelembapan>85: tips.append("awas jamur")
-    if not tips: tips.append("bertani")
-    st.markdown(f"- {r.Tanggal:%d-%m-%Y}: {', '.join(tips).capitalize()}")
+df["Rekomendasi Irigasi"] = df["Curah Hujan (mm)"].apply(
+    lambda x: "🚿 Irigasi Diperlukan" if x < threshold else "✅ Tidak Perlu Irigasi"
+)
 
+# ------------------ TABEL DATA ------------------
+with st.expander("📋 Tabel Data & Rekomendasi Harian"):
+    st.dataframe(df, use_container_width=True)
+    st.download_button("⬇ Download CSV", data=df.to_csv(index=False), file_name="data_irigasi_lakessi.csv")
+
+# ------------------ GRAFIK CURAH HUJAN ------------------
+with st.expander("📊 Grafik Curah Hujan Harian"):
+    fig = px.bar(df, x="Tanggal", y="Curah Hujan (mm)", color="Curah Hujan (mm)",
+                 title="Curah Hujan Harian", labels={"value": "Curah Hujan (mm)"})
+    fig.add_hline(y=threshold, line_dash="dash", line_color="red", annotation_text=f"Batas Irigasi ({threshold} mm)")
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("🔴 Garis batas menunjukkan ambang kebutuhan irigasi.")
+
+# ------------------ GRAFIK SUHU & KELEMBAPAN ------------------
+with st.expander("🌡 Grafik Suhu & Kelembapan Harian"):
+    fig2 = px.line(df, x="Tanggal", y=["Suhu Maks (°C)", "Suhu Min (°C)"], markers=True, title="Suhu Harian")
+    st.plotly_chart(fig2, use_container_width=True)
+
+    fig3 = px.line(df, x="Tanggal", y="Kelembapan (%)", title="Kelembapan Harian", markers=True)
+    st.plotly_chart(fig3, use_container_width=True)
+    st.markdown("📈 Kelembapan & suhu berpengaruh terhadap kondisi ideal tanaman.")
+
+# ------------------ ESTIMASI TANAM & PANEN ------------------
+with st.expander("🌱 Estimasi Waktu Tanam & Panen"):
+    waktu_tanam = df["Tanggal"].min().date()
+    waktu_panen = (df["Tanggal"].min() + pd.Timedelta(days=100)).date()
+    st.info(f"""
+    🧮 *Estimasi waktu tanam:* {waktu_tanam}  
+    🌾 *Estimasi waktu panen:* {waktu_panen} (estimasi 100 hari masa tanam padi)
+    """)
+
+# ------------------ TIPS PERTANIAN ------------------
+with st.expander("🧠 Tips Pertanian Harian Otomatis"):
+    for _, row in df.iterrows():
+        tips = []
+        if row["Curah Hujan (mm)"] < threshold:
+            tips.append("lakukan irigasi")
+        if row["Suhu Maks (°C)"] > 33:
+            tips.append("hati-hati stres panas")
+        if row["Kelembapan (%)"] > 85:
+            tips.append("waspadai jamur & hama")
+        if not tips:
+            tips.append("cuaca baik untuk menanam atau memanen")
+
+        st.markdown(f"📅 {row['Tanggal'].date()}: {'; '.join(tips).capitalize()}.")
+
+# ------------------ FOOTER ------------------
 st.markdown("---")
-st.caption("🛰 Data otomatis – Dian Eka Putra | Lokasi akurat: Desa Lakessi, Sidrap")
+st.markdown("© 2025 Desa Lakessi – Aplikasi KKN Mandiri oleh *Dian Eka Putra*")
