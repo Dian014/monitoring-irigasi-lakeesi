@@ -58,6 +58,26 @@ resp = requests.get(weather_url)
 data = resp.json()
 
 # ------------------ DATAFRAME ------------------
+df = pd.DataFrame({
+    "Tanggal": pd.to_datetime(data["daily"]["time"]),
+    "Curah Hujan (mm)": np.round(data["daily"]["precipitation_sum"], 1),
+    "Suhu Maks (°C)": np.round(data["daily"]["temperature_2m_max"], 1),
+    "Suhu Min (°C)": np.round(data["daily"]["temperature_2m_min"], 1),
+    "Kelembapan (%)": np.round(data["daily"]["relative_humidity_2m_mean"], 1)
+})
+
+# ------------------ REKOMENDASI IRIGASI ------------------
+threshold = st.sidebar.slider("💧 Batas curah hujan untuk irigasi (mm):", 0, 20, 5)
+df["Rekomendasi Irigasi"] = df["Curah Hujan (mm)"].apply(
+    lambda x: "🚿 Irigasi Diperlukan" if x < threshold else "✅ Tidak Perlu Irigasi"
+)
+
+# ------------------ FUNGSI STYLING ------------------
+def highlight_irigasi(row):
+    color = '#ffe6e6' if row["Rekomendasi Irigasi"] == "🚿 Irigasi Diperlukan" else '#ffffff'
+    return ['background-color: {}'.format(color)] * len(row)
+
+# ------------------ TAMPILKAN TABEL ------------------
 st.dataframe(
     df.style
       .apply(highlight_irigasi, axis=1)
@@ -69,17 +89,6 @@ st.dataframe(
       }),
     use_container_width=True
 )
-
-# ------------------ REKOMENDASI IRIGASI ------------------
-threshold = st.sidebar.slider("💧 Batas curah hujan untuk irigasi (mm):", 0, 20, 5)
-df["Rekomendasi Irigasi"] = df["Curah Hujan (mm)"].apply(
-    lambda x: "🚿 Irigasi Diperlukan" if x < threshold else "✅ Tidak Perlu Irigasi"
-)
-
-# ------------------ TABEL DATA ------------------
-def highlight_irigasi(row):
-    color = '#ffe6e6' if row["Rekomendasi Irigasi"] == "🚿 Irigasi Diperlukan" else '#ffffff'
-    return ['background-color: {}'.format(color)] * len(row)
 
 with st.expander("📋 Tabel Data & Rekomendasi Harian"):
     st.dataframe(df.style.apply(highlight_irigasi, axis=1), use_container_width=True)
