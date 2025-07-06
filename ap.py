@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # ------------------ HEADER ------------------
-st.title("🌾 Sistem Monitoring Irigasi & Pertanian Cerdas - Kelurahan Lakessi")
+st.title("Sistem Monitoring Irigasi & Pertanian Cerdas - Kelurahan Lakessi")
 st.markdown("""
 Aplikasi ini memantau cuaca harian, memberi rekomendasi irigasi, serta menampilkan estimasi waktu tanam dan panen berdasarkan data real-time.
 Dilengkapi dengan prediksi hasil panen dan estimasi pendapatan untuk lahan sawah di Kelurahan Lakessi, Kecamatan Maritengngae, Kabupaten Sidrap, Sulawesi Selatan.
@@ -60,10 +60,10 @@ data = resp.json()
 # ------------------ DATAFRAME ------------------
 df = pd.DataFrame({
     "Tanggal": pd.to_datetime(data["daily"]["time"]),
-    "Curah Hujan (mm)": np.round(data["daily"]["precipitation_sum"]).astype(int),
-    "Suhu Maks (°C)": np.round(data["daily"]["temperature_2m_max"]).astype(int),
-    "Suhu Min (°C)": np.round(data["daily"]["temperature_2m_min"]).astype(int),
-    "Kelembapan (%)": np.round(data["daily"]["relative_humidity_2m_mean"]).astype(int)
+    "Curah Hujan (mm)": pd.Series(data["daily"]["precipitation_sum"]).round(1),
+    "Suhu Maks (°C)": pd.Series(data["daily"]["temperature_2m_max"]).round(1),
+    "Suhu Min (°C)": pd.Series(data["daily"]["temperature_2m_min"]).round(1),
+    "Kelembapan (%)": pd.Series(data["daily"]["relative_humidity_2m_mean"]).round(1)
 })
 
 # ------------------ REKOMENDASI IRIGASI ------------------
@@ -104,7 +104,7 @@ with st.expander("🌱 Estimasi Waktu Tanam & Panen"):
     """)
 
 # ------------------ PREDIKSI HASIL PANEN OTOMATIS ------------------
-with st.expander("🤖 Prediksi Hasil Panen Otomatis (AI + Cuaca)"):
+with st.expander("🤖 Prediksi Hasil Panen Otomatis"):
     historical_df = pd.DataFrame({
         "Curah Hujan (mm)": [3.2, 1.0, 5.5, 0.0, 6.0],
         "Suhu Maks (°C)": [30, 32, 29, 31, 33],
