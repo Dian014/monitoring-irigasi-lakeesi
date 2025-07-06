@@ -169,4 +169,4 @@ with st.expander("🧠 Tips Pertanian Harian Otomatis"):
 
 # ------------------ FOOTER ------------------
 st.markdown("---")
-st.markdown("© 2025 Kelurahan Lakessi – Aplikasi KKN Mandiri oleh Dian Eka Putra")
+st.markdown("© 2025 Kelurahan Lakessi – Program Kerja KKN oleh Dian Eka Putra")
