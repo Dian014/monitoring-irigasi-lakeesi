@@ -26,7 +26,7 @@ Desa Lakessi merupakan wilayah yang bergantung pada irigasi untuk pertanian. Mon
 
 ## Deploy Online
 Aplikasi ini juga dapat diakses secara online melalui [Streamlit Cloud](https://streamlit.io/cloud) dengan link:  
-`https://nama-repo-kamu.streamlit.app`
+`https://monitoring-irigasi-lakeesi.streamlit.app`
 
 ## Kontak
 Jika ada pertanyaan atau masukan, silakan hubungi:  
