@@ -9,7 +9,7 @@ from streamlit_folium import st_folium
 
 st.set_page_config( page_title="📡 Sistem Monitoring Irigasi & Pertanian Lakessi", layout="wide", initial_sidebar_state="expanded" )
 
------------------- HEADER GAMBAR ------------------
+#------------------ HEADER GAMBAR ------------------
 
 st.image( "https://upload.wikimedia.org/wikipedia/commons/2/2a/Sawah_di_Sulawesi_Selatan.jpg", caption="📍 Persawahan di Sulawesi Selatan (Sumber: Wikimedia Commons)", use_container_width=True )
 
