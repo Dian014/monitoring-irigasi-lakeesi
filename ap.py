@@ -7,8 +7,8 @@ st.set_page_config(page_title="Monitoring Irigasi Desa Lakessi", layout="wide")
 
 # Gambar header
 st.image(
-    "https://images.unsplash.com/photo-1592153823269-812be9a1b5a6",  # Gambar irigasi gratis dari Unsplash
-    use_column_width=True,
+    "https://images.unsplash.com/photo-1592153823269-812be9a1b5a6",
+    use_container_width=True,
     caption="Sistem Irigasi untuk Pertanian di Desa Lakessi"
 )
 
@@ -69,6 +69,6 @@ with col2:
 # Footer
 st.markdown("---")
 st.markdown(
-    "<small>🌾 Aplikasi ini dibuat untuk Program KKN Mandiri di Desa Lakessi, Kecamatan Maritengngae, Kabupaten Sidrap.<br>📬 Kontak: <a href='mailto:emailkamu@example.com'>emailkamu@example.com</a></small>",
+    "<small>🌾 Aplikasi ini dibuat untuk Program KKN Mandiri di Desa Lakessi, Kecamatan Maritengngae, Kabupaten Sidrap.<br>📬 Kontak: <a href='mailto:ekaputradian01@gmail.com'>ekaputradian01@gmail.com</a></small>",
     unsafe_allow_html=True
 )
