@@ -60,10 +60,10 @@ data = resp.json()
 # ------------------ DATAFRAME ------------------
 df = pd.DataFrame({
     "Tanggal": pd.to_datetime(data["daily"]["time"]),
-    "Curah Hujan (mm)": np.round(data["daily"]["precipitation_sum"], 1),
-    "Suhu Maks (°C)": np.round(data["daily"]["temperature_2m_max"], 1),
-    "Suhu Min (°C)": np.round(data["daily"]["temperature_2m_min"], 1),
-    "Kelembapan (%)": np.round(data["daily"]["relative_humidity_2m_mean"], 1)
+    "Curah Hujan (mm)": np.round(data["daily"]["precipitation_sum"]).astype(int),
+    "Suhu Maks (°C)": np.round(data["daily"]["temperature_2m_max"]).astype(int),
+    "Suhu Min (°C)": np.round(data["daily"]["temperature_2m_min"]).astype(int),
+    "Kelembapan (%)": np.round(data["daily"]["relative_humidity_2m_mean"]).astype(int)
 })
 
 # ------------------ REKOMENDASI IRIGASI ------------------
