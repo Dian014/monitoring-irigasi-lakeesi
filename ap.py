@@ -1,4 +1,3 @@
-# ------------------ IMPORT ------------------
 import streamlit as st
 import requests
 import pandas as pd
@@ -35,7 +34,6 @@ LAT, LON = -3.947760, 119.810237
 # ------------------ PETA ------------------
 with st.expander("🗺 Peta Curah Hujan Real‑time"):
     m = folium.Map(location=[LAT, LON], zoom_start=13, height=400)
-
     OWM_API_KEY = st.secrets.get("OWM_API_KEY", "")
     if OWM_API_KEY:
         tile_url = (
@@ -50,7 +48,6 @@ with st.expander("🗺 Peta Curah Hujan Real‑time"):
             control=True,
             opacity=0.6
         ).add_to(m)
-
     folium.Marker([LAT, LON], tooltip="📍 Desa Lakessi").add_to(m)
     st_folium(m, width=700, height=400)
 
@@ -80,13 +77,55 @@ df["Rekomendasi Irigasi"] = df["Curah Hujan (mm)"].apply(
 )
 
 # ------------------ TABEL DATA ------------------
-with st.expander("📋 Tabel Data & Rekomendasi Harian"):
-    styled_df = df.style.set_properties({
-        'background-color': '#f0f9ff',
-        'color': '#000000',
-        'border-color': '#cce5ff'
-    })
-    st.dataframe(styled_df, use_container_width=True)
+with st.expander("📋 Tabel Data & Rekomendasi Harian (dengan Highlight)"):
+    def highlight_row(row):
+        bg_color = "#ffffff"  # default
+        if row["Curah Hujan (mm)"] < threshold:
+            bg_color = "#ffe6e6"  # merah muda
+        elif row["Kelembapan (%)"] > 85:
+            bg_color = "#e6f7ff"  # biru muda
+
+        return f"""
+        <tr style="background-color:{bg_color}">
+            <td>{row['Tanggal'].date()}</td>
+            <td>{row['Curah Hujan (mm)']}</td>
+            <td>{row['Suhu Maks (°C)']}</td>
+            <td>{row['Suhu Min (°C)']}</td>
+            <td>{row['Kelembapan (%)']}</td>
+            <td>{row['Rekomendasi Irigasi']}</td>
+        </tr>
+        """
+
+    table_html = """
+    <style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 8px;
+        border: 1px solid #ccc;
+        text-align: center;
+    }
+    th {
+        background-color: #e0f2ff;
+    }
+    </style>
+    <table>
+        <tr>
+            <th>Tanggal</th>
+            <th>Curah Hujan (mm)</th>
+            <th>Suhu Maks (°C)</th>
+            <th>Suhu Min (°C)</th>
+            <th>Kelembapan (%)</th>
+            <th>Rekomendasi</th>
+        </tr>
+    """
+    for _, row in df.iterrows():
+        table_html += highlight_row(row)
+    table_html += "</table>"
+    st.markdown(table_html, unsafe_allow_html=True)
+
     st.download_button(
         "⬇ Download CSV",
         data=df.to_csv(index=False),
@@ -96,9 +135,9 @@ with st.expander("📋 Tabel Data & Rekomendasi Harian"):
 # ------------------ GRAFIK CURAH HUJAN ------------------
 with st.expander("📊 Grafik Curah Hujan Harian"):
     fig = px.bar(
-        df, x="Tanggal", y="Curah Hujan (mm)",
-        color="Curah Hujan (mm)",
-        title="Curah Hujan Harian"
+        df, x="Tanggal", y="Curah Hujan (mm)", color="Curah Hujan (mm)",
+        title="Curah Hujan Harian",
+        labels={"value": "Curah Hujan (mm)"}
     )
     fig.add_hline(
         y=threshold, line_dash="dash", line_color="red",
