@@ -58,13 +58,17 @@ resp = requests.get(weather_url)
 data = resp.json()
 
 # ------------------ DATAFRAME ------------------
-df = pd.DataFrame({
-    "Tanggal": pd.to_datetime(data["daily"]["time"]),
-    "Curah Hujan (mm)": pd.Series(data["daily"]["precipitation_sum"]).round(1),
-    "Suhu Maks (°C)": pd.Series(data["daily"]["temperature_2m_max"]).round(1),
-    "Suhu Min (°C)": pd.Series(data["daily"]["temperature_2m_min"]).round(1),
-    "Kelembapan (%)": pd.Series(data["daily"]["relative_humidity_2m_mean"]).round(1)
-})
+st.dataframe(
+    df.style
+      .apply(highlight_irigasi, axis=1)
+      .format({
+          "Curah Hujan (mm)": "{:.1f}",
+          "Suhu Maks (°C)": "{:.1f}",
+          "Suhu Min (°C)": "{:.1f}",
+          "Kelembapan (%)": "{:.1f}"
+      }),
+    use_container_width=True
+)
 
 # ------------------ REKOMENDASI IRIGASI ------------------
 threshold = st.sidebar.slider("💧 Batas curah hujan untuk irigasi (mm):", 0, 20, 5)
