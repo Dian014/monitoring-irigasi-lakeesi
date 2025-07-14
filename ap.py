@@ -8,7 +8,6 @@ from streamlit_folium import st_folium
 from sklearn.linear_model import LinearRegression
 from io import BytesIO
 import base64
-import openai
 from datetime import datetime
 import subprocess
 import json
@@ -19,13 +18,6 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
-# ------------------ API Key OpenAI ------------------
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
-if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
-else:
-    st.warning("API Key OpenAI belum disetel di secrets! Tanya Jawab otomatis tidak akan berfungsi.")
 
 # ------------------ INPUT KOORDINAT ------------------
 LAT = st.sidebar.number_input("Latitude", value=-3.921406, format="%.6f")
@@ -85,41 +77,22 @@ df_jam = pd.DataFrame({
 
 # ------------------ TAMPILKAN GRAFIK ------------------
 with st.expander("Grafik Harian"):
-    st.plotly_chart(
-        px.bar(df_harian, x="Tanggal", y="Curah Hujan (mm)", title="Curah Hujan Harian"),
-        use_container_width=True
-    )
-    st.plotly_chart(
-        px.line(df_harian, x="Tanggal", y="Suhu Maks (°C)", title="Suhu Maksimum Harian"),
-        use_container_width=True
-    )
-    st.plotly_chart(
-        px.line(df_harian, x="Tanggal", y="Suhu Min (°C)", title="Suhu Minimum Harian"),
-        use_container_width=True
-    )
-    st.plotly_chart(
-        px.line(df_harian, x="Tanggal", y="Kelembapan (%)", title="Kelembapan Harian"),
-        use_container_width=True
-    )
+    st.plotly_chart(px.bar(df_harian, x="Tanggal", y="Curah Hujan (mm)", title="Curah Hujan Harian"), use_container_width=True)
+    st.plotly_chart(px.line(df_harian, x="Tanggal", y="Suhu Maks (°C)", title="Suhu Maksimum Harian"), use_container_width=True)
+    st.plotly_chart(px.line(df_harian, x="Tanggal", y="Suhu Min (°C)", title="Suhu Minimum Harian"), use_container_width=True)
+    st.plotly_chart(px.line(df_harian, x="Tanggal", y="Kelembapan (%)", title="Kelembapan Harian"), use_container_width=True)
 
-df_jam_prediksi = df_jam[df_jam["Waktu"] > datetime.now()].head(48)
+from datetime import datetime as dt
+
+df_jam_prediksi = df_jam[df_jam["Waktu"] > dt.now()].head(48)
 
 with st.expander("Grafik Per Jam (48 Jam Ke Depan)"):
     if df_jam_prediksi.empty:
         st.warning("Tidak ada data prediksi ke depan tersedia saat ini.")
     else:
-        st.plotly_chart(
-            px.line(df_jam_prediksi, x="Waktu", y="Curah Hujan (mm)", title="Prediksi Curah Hujan per Jam (48 Jam Ke Depan)"),
-            use_container_width=True
-        )
-        st.plotly_chart(
-            px.line(df_jam_prediksi, x="Waktu", y="Suhu (°C)", title="Prediksi Suhu per Jam (48 Jam Ke Depan)"),
-            use_container_width=True
-        )
-        st.plotly_chart(
-            px.line(df_jam_prediksi, x="Waktu", y="Kelembapan (%)", title="Prediksi Kelembapan per Jam (48 Jam Ke Depan)"),
-            use_container_width=True
-        )
+        st.plotly_chart(px.line(df_jam_prediksi, x="Waktu", y="Curah Hujan (mm)", title="Prediksi Curah Hujan per Jam (48 Jam Ke Depan)"), use_container_width=True)
+        st.plotly_chart(px.line(df_jam_prediksi, x="Waktu", y="Suhu (°C)", title="Prediksi Suhu per Jam (48 Jam Ke Depan)"), use_container_width=True)
+        st.plotly_chart(px.line(df_jam_prediksi, x="Waktu", y="Kelembapan (%)", title="Prediksi Kelembapan per Jam (48 Jam Ke Depan)"), use_container_width=True)
 
 # ------------------ MODEL PREDIKSI ------------------
 model_df = pd.DataFrame({
@@ -156,63 +129,40 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
 
-# Konfigurasi
-st.set_page_config(page_title="Tanya Jawab Pertanian Lakessi", layout="centered")
-
-# Tombol header
-st.title("🤖 Tanya Jawab Pertanian Cerdas")
-st.markdown("Pilih model AI yang ingin digunakan:")
-
-# Pilihan model
-model_choice = st.radio("Gunakan model:", ["OpenAI", "AI Lokal (Ollama)"])
-
-# Input pertanyaan
-pertanyaan = st.text_area("Tulis pertanyaan warga:", placeholder="Contoh: Apa solusi hama wereng pada padi?")
-
-# Tombol proses
-if st.button("Jawab"):
-    if pertanyaan.strip() == "":
-        st.warning("Mohon masukkan pertanyaan terlebih dahulu.")
-    else:
-        st.info("Sedang memproses jawaban...")
-        try:
-            if model_choice == "OpenAI":
-                import openai
-                openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "Kamu adalah pakar pertanian yang membantu petani di desa Lakessi."},
-                        {"role": "user", "content": pertanyaan}
-                    ],
-                    max_tokens=500,
-                    temperature=0.7
-                )
-                jawaban = response.choices[0].message.content.strip()
-                st.success("Jawaban dari OpenAI:")
-                st.write(jawaban)
-
-            elif model_choice == "AI Lokal (Ollama)":
-                try:
-                    result = subprocess.run(
-                        ["ollama", "run", "llama3", pertanyaan],
-                        capture_output=True, text=True, timeout=20
-                    )
-                    if result.returncode == 0:
-                        st.success("Jawaban dari Ollama (lokal):")
-                        st.write(result.stdout)
-                    else:
-                        st.warning("Gagal menjalankan model lokal. Coba pakai OpenAI.")
-                except Exception as e:
-                    st.error(f"Gagal menggunakan AI lokal: {e}")
-
-        except Exception as e:
-            st.error(f"Terjadi kesalahan: {e}")
-
-# Footer
+# Tanya Jawab Pertanian Manual
 st.markdown("---")
-st.caption("© 2025 – Lakessi Smart Farming AI Interface")
+st.title("💬 Tanya Jawab Pertanian (Manual)")
+
+faq_dict = {
+    "Apa solusi hama wereng pada padi?": "Gunakan insektisida berbahan aktif imidakloprid secara teratur dan pantau populasi hama secara berkala.",
+    "Kapan waktu terbaik untuk tanam padi?": "Waktu terbaik adalah awal musim hujan, sekitar Oktober-November.",
+    "Apa yang harus dilakukan saat curah hujan tinggi?": "Pastikan drainase sawah baik dan hindari pemupukan saat hujan deras.",
+    "Apa jenis pupuk terbaik untuk padi?": "Gunakan kombinasi Urea, SP-36 dan KCl dengan dosis sesuai fase pertumbuhan.",
+    "Bagaimana cara mengatasi tanah asam?": "Gunakan kapur dolomit untuk menetralkan pH tanah.",
+    "Bagaimana cara meningkatkan hasil panen?": "Gunakan benih unggul, pupuk berimbang, dan lakukan pengendalian hama terpadu."
+}
+
+pertanyaan_manual = st.text_input("Tulis pertanyaan Anda:")
+if st.button("Jawab Pertanyaan"):
+    jawaban = faq_dict.get(pertanyaan_manual.strip(), "Maaf, jawaban belum tersedia dalam basis data. Silakan konsultasi dengan penyuluh pertanian setempat.")
+    st.success("Jawaban:")
+    st.write(jawaban)
+
+# Fitur Tambahan: Kalkulator Pupuk
+with st.expander("📦 Kalkulator Pemupukan Dasar"):
+    tanaman = st.selectbox("Jenis Tanaman", ["Padi", "Jagung", "Kedelai"])
+    luas_lahan = st.number_input("Luas Lahan (ha)", value=1.0, key="pupuk_luas")
+
+    dosis = {
+        "Padi": {"Urea": 250, "SP-36": 100, "KCl": 100},
+        "Jagung": {"Urea": 300, "SP-36": 150, "KCl": 100},
+        "Kedelai": {"Urea": 100, "SP-36": 100, "KCl": 75},
+    }
+    pupuk = dosis[tanaman]
+    st.write("### Kebutuhan Pupuk per Jenis:")
+    for jenis, kg_per_ha in pupuk.items():
+        total_kg = kg_per_ha * luas_lahan
+        st.write(f"- {jenis}: {total_kg} kg")
 
 # Perhitungan manual prediksi panen
 with st.expander("Hitung Manual Prediksi Panen"):
@@ -256,8 +206,8 @@ with st.expander("Laporan Warga"):
             col1, col2 = st.columns([0.9, 0.1])
             with col1:
                 st.markdown(
-                    f"**{lap['Tanggal']}**  \n"
-                    f"{lap['Jenis']}: {lap['Deskripsi']} oleh **{lap['Nama']}** – Lokasi: *{lap['Lokasi']}*"
+                    f"{lap['Tanggal']}**  \n"
+                    f"{lap['Jenis']}: {lap['Deskripsi']} oleh *{lap['Nama']}* – Lokasi: {lap['Lokasi']}"
                 )
             with col2:
                 if st.button("Hapus", key=f"del_lap_{i}"):
