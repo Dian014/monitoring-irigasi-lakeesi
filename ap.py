@@ -11,6 +11,7 @@ import base64
 from datetime import datetime
 import subprocess
 import json
+import xlsxwriter
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -75,10 +76,11 @@ with st.expander("📊 Tabel Data Cuaca Harian"):
     csv = df_harian.to_csv(index=False).encode("utf-8")
     st.download_button("📥 Download CSV", csv, "data_cuaca_harian.csv", "text/csv")
 
-    # Export Excel
+    # Export Excel (pakai xlsxwriter)
     excel_io = BytesIO()
-    df_harian.to_excel(excel_io, index=False, sheet_name="Cuaca Harian", engine="openpyxl")
-    excel_io.seek(0)  # wajib sebelum dibaca kembali
+    with pd.ExcelWriter(excel_io, engine='xlsxwriter') as writer:
+        df_harian.to_excel(writer, index=False, sheet_name="Cuaca Harian")
+    excel_io.seek(0)
     st.download_button("📥 Download Excel", data=excel_io.read(), file_name="data_cuaca_harian.xlsx")
 
     # Export PDF (sederhana via HTML -> base64)
