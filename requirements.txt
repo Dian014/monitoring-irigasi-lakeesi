@@ -6,3 +6,4 @@ plotly
 folium
 scikit-learn
 streamlit-folium
+openai
