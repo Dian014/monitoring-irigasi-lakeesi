@@ -154,7 +154,7 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
     
-    with st.expander("Tanya Jawab Pertanian (Manual)"):
+with st.expander("Tanya Jawab Pertanian (Manual)"):
     st.markdown("### ❓ Tulis pertanyaan Anda tentang pertanian:")
     pertanyaan = st.text_area("Contoh: Bagaimana cara mengatasi wereng pada padi?")
     if pertanyaan:
@@ -184,7 +184,6 @@ with st.expander("Hitung Manual Prediksi Panen"):
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
 
-# Laporan warga
 with st.expander("Laporan Warga"):
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
@@ -193,18 +192,28 @@ with st.expander("Laporan Warga"):
         lokasi = st.text_input("Lokasi")
         isi = st.text_area("Deskripsi")
         kirim = st.form_submit_button("Kirim")
+
         if kirim and nama and kontak and isi:
             if "laporan" not in st.session_state:
                 st.session_state.laporan = []
             st.session_state.laporan.append({
-                "Nama": nama, "Kontak": kontak, "Jenis": jenis, "Lokasi": lokasi, "Deskripsi": isi
+                "Nama": nama,
+                "Kontak": kontak,
+                "Jenis": jenis,
+                "Lokasi": lokasi,
+                "Deskripsi": isi,
+                "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
             })
             st.success("Laporan terkirim!")
+
     if "laporan" in st.session_state:
         for i, lap in enumerate(st.session_state.laporan):
             col1, col2 = st.columns([0.9, 0.1])
             with col1:
-                st.markdown(f"{lap['Jenis']}: {lap['Deskripsi']} oleh {lap['Nama']} – Lokasi: {lap['Lokasi']}")
+                st.markdown(
+                    f"**{lap['Tanggal']}**  \n"
+                    f"{lap['Jenis']}: {lap['Deskripsi']} oleh **{lap['Nama']}** – Lokasi: *{lap['Lokasi']}*"
+                )
             with col2:
                 if st.button("Hapus", key=f"del_lap_{i}"):
                     st.session_state.laporan.pop(i)
