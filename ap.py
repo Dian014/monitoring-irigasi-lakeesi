@@ -10,6 +10,9 @@ from io import BytesIO
 import base64
 import openai
 from datetime import datetime
+import datetime
+import subprocess
+import json
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -153,21 +156,64 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write("### Proyeksi Panen Lebih Panjang:")
     st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
-    
-with st.expander("Tanya Jawab Pertanian (Manual)"):
-    st.markdown("### ❓ Tulis pertanyaan Anda tentang pertanian:")
-    pertanyaan = st.text_area("Contoh: Bagaimana cara mengatasi wereng pada padi?")
-    if pertanyaan:
-        st.info("Silakan konsultasi dengan penyuluh pertanian atau gunakan aplikasi berikut:")
 
-    st.markdown("### 📱 Aplikasi Pendukung Petani (Gratis di Play Store):")
-    st.markdown("""
-- 🌱 [**SIPINDO (PT East West Seed Indonesia)**](https://play.google.com/store/apps/details?id=id.co.ewindo.sipindo): Info cuaca, hama, pupuk, dan jadwal tanam.
-- 🌾 [**AgriON (Digital Platform Petani)**](https://play.google.com/store/apps/details?id=id.agron): Komunitas petani dan pengelolaan pertanian.
-- 📦 [**TaniHub (Distribusi Hasil Tani)**](https://play.google.com/store/apps/details?id=com.tanihub.mobile): Jual beli hasil panen langsung.
-- 🧠 [**Agriaku (Belanja kebutuhan tani)**](https://play.google.com/store/apps/details?id=com.agriaku.app): Pembelian pupuk, pestisida, benih.
-- 💧 [**e-KPB Lampung (Kartu Petani Berjaya)**](https://play.google.com/store/apps/details?id=com.ekpb.kpbapp): Akses subsidi dan pembinaan pemerintah.
-""")
+# Konfigurasi
+st.set_page_config(page_title="Tanya Jawab Pertanian Lakessi", layout="centered")
+
+# Tombol header
+st.title("🤖 Tanya Jawab Pertanian Cerdas")
+st.markdown("Pilih model AI yang ingin digunakan:")
+
+# Pilihan model
+model_choice = st.radio("Gunakan model:", ["OpenAI", "AI Lokal (Ollama)"])
+
+# Input pertanyaan
+pertanyaan = st.text_area("Tulis pertanyaan warga:", placeholder="Contoh: Apa solusi hama wereng pada padi?")
+
+# Tombol proses
+if st.button("Jawab"):
+    if pertanyaan.strip() == "":
+        st.warning("Mohon masukkan pertanyaan terlebih dahulu.")
+    else:
+        st.info("Sedang memproses jawaban...")
+        try:
+            if model_choice == "OpenAI":
+                import openai
+                openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "Kamu adalah pakar pertanian yang membantu petani di desa Lakessi."},
+                        {"role": "user", "content": pertanyaan}
+                    ],
+                    max_tokens=500,
+                    temperature=0.7
+                )
+                jawaban = response.choices[0].message.content.strip()
+                st.success("Jawaban dari OpenAI:")
+                st.write(jawaban)
+
+            elif model_choice == "AI Lokal (Ollama)":
+                try:
+                    result = subprocess.run(
+                        ["ollama", "run", "llama3", pertanyaan],
+                        capture_output=True, text=True, timeout=20
+                    )
+                    if result.returncode == 0:
+                        st.success("Jawaban dari Ollama (lokal):")
+                        st.write(result.stdout)
+                    else:
+                        st.warning("Gagal menjalankan model lokal. Coba pakai OpenAI.")
+                except Exception as e:
+                    st.error(f"Gagal menggunakan AI lokal: {e}")
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan: {e}")
+
+# Footer
+st.markdown("---")
+st.caption("© 2025 – Lakessi Smart Farming AI Interface")
 
 # Perhitungan manual prediksi panen
 with st.expander("Hitung Manual Prediksi Panen"):
