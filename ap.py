@@ -227,6 +227,9 @@ def save_data(filename, data):
 if "laporan" not in st.session_state:
     st.session_state.laporan = load_data(LAPORAN_FILE)
 
+if "laporan_update" not in st.session_state:
+    st.session_state.laporan_update = False  # flag untuk rerun laporan
+
 with st.expander("📢 Laporan Warga"):
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
@@ -248,11 +251,12 @@ with st.expander("📢 Laporan Warga"):
                 }
                 st.session_state.laporan.append(new_laporan)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
+                st.session_state.laporan_update = True
                 st.success("Laporan berhasil dikirim.")
             else:
                 st.warning("Lengkapi semua isian sebelum mengirim laporan.")
 
-    # Tampilkan laporan warga (di luar form submit)
+    # Tampilkan laporan warga (di luar form)
     for i, lap in enumerate(st.session_state.laporan):
         col1, col2 = st.columns([0.9, 0.1])
         with col1:
@@ -266,7 +270,7 @@ with st.expander("📢 Laporan Warga"):
             if st.button("🗑️ Hapus", key=f"del_lap_{i}"):
                 st.session_state.laporan.pop(i)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
-                st.experimental_rerun()
+                st.session_state.laporan_update = True
 
 # ------------------ PENGINGAT HARIAN ------------------
 TODO_FILE = "todo_harian.json"
@@ -287,13 +291,16 @@ def save_todo(data):
 if "todo" not in st.session_state:
     st.session_state.todo = load_todo()
 
+if "todo_update" not in st.session_state:
+    st.session_state.todo_update = False  # flag untuk rerun todo
+
 with st.expander("📝 Pengingat Harian (To-Do List)"):
     tugas_baru = st.text_input("Tambah Tugas Baru:")
     if st.button("✅ Simpan", key="btn_simpan_tugas"):
         if tugas_baru.strip():
             st.session_state.todo.append(tugas_baru.strip())
             save_todo(st.session_state.todo)
-            st.experimental_rerun()
+            st.session_state.todo_update = True
         else:
             st.warning("⚠️ Tugas tidak boleh kosong.")
 
@@ -303,8 +310,13 @@ with st.expander("📝 Pengingat Harian (To-Do List)"):
         if col2.button("🗑️ Hapus", key=f"hapus_todo_{i}"):
             st.session_state.todo.pop(i)
             save_todo(st.session_state.todo)
-            st.experimental_rerun()
+            st.session_state.todo_update = True
 
+# Panggil rerun sekali jika ada update di laporan atau todo
+if st.session_state.laporan_update or st.session_state.todo_update:
+    st.session_state.laporan_update = False
+    st.session_state.todo_update = False
+    st.experimental_rerun()
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
