@@ -7,8 +7,8 @@ import folium
 from streamlit_folium import st_folium
 from sklearn.linear_model import LinearRegression
 from io import BytesIO
-from datetime import timedelta
 import base64
+import openai
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -16,6 +16,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ------------------ API Key OpenAI ------------------
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
+else:
+    st.warning("API Key OpenAI belum disetel di secrets! Tanya Jawab otomatis tidak akan berfungsi.")
 
 # ------------------ INPUT KOORDINAT ------------------
 LAT = st.sidebar.number_input("Latitude", value=-3.921406, format="%.6f")
@@ -34,11 +41,14 @@ with st.expander("Peta Curah Hujan Real-time"):
     OWM_API_KEY = st.secrets.get("OWM_API_KEY", "")
     if OWM_API_KEY:
         tile_url = f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={OWM_API_KEY}"
-        folium.TileLayer(tiles=tile_url, attr="© OpenWeatherMap", name="Curah Hujan", overlay=True, control=True, opacity=0.6).add_to(m)
+        folium.TileLayer(
+            tiles=tile_url, attr="© OpenWeatherMap",
+            name="Curah Hujan", overlay=True, control=True, opacity=0.6
+        ).add_to(m)
     folium.Marker([LAT, LON], tooltip="Lokasi Terpilih").add_to(m)
     st_folium(m, width="100%", height=400)
 
-# ------------------ DATA CUACA ------------------
+# ------------------ AMBIL DATA CUACA ------------------
 weather_url = (
     f"https://api.open-meteo.com/v1/forecast?"
     f"latitude={LAT}&longitude={LON}&"
@@ -48,7 +58,7 @@ weather_url = (
 resp = requests.get(weather_url)
 data = resp.json()
 
-# ------------------ DATAFRAME ------------------
+# ------------------ DATAFRAME HARIAN ------------------
 df_harian = pd.DataFrame({
     "Tanggal": pd.to_datetime(data["daily"]["time"]),
     "Curah Hujan (mm)": np.round(data["daily"]["precipitation_sum"], 1),
@@ -58,14 +68,50 @@ df_harian = pd.DataFrame({
 })
 
 threshold = st.sidebar.slider("Batas Curah Hujan untuk Irigasi (mm):", 0, 20, 5)
-df_harian["Rekomendasi Irigasi"] = df_harian["Curah Hujan (mm)"].apply(lambda x: "Irigasi Diperlukan" if x < threshold else "Cukup")
+df_harian["Rekomendasi Irigasi"] = df_harian["Curah Hujan (mm)"].apply(
+    lambda x: "Irigasi Diperlukan" if x < threshold else "Cukup"
+)
 
+# ------------------ DATAFRAME PER JAM ------------------
 df_jam = pd.DataFrame({
     "Waktu": pd.to_datetime(data["hourly"]["time"]),
     "Curah Hujan (mm)": data["hourly"]["precipitation"],
     "Suhu (°C)": data["hourly"]["temperature_2m"],
     "Kelembapan (%)": data["hourly"]["relative_humidity_2m"]
 })
+
+# ------------------ TAMPILKAN GRAFIK ------------------
+with st.expander("Grafik Harian"):
+    st.plotly_chart(
+        px.bar(df_harian, x="Tanggal", y="Curah Hujan (mm)", title="Curah Hujan Harian"),
+        use_container_width=True
+    )
+    st.plotly_chart(
+        px.line(df_harian, x="Tanggal", y="Suhu Maks (°C)", title="Suhu Maksimum Harian"),
+        use_container_width=True
+    )
+    st.plotly_chart(
+        px.line(df_harian, x="Tanggal", y="Suhu Min (°C)", title="Suhu Minimum Harian"),
+        use_container_width=True
+    )
+    st.plotly_chart(
+        px.line(df_harian, x="Tanggal", y="Kelembapan (%)", title="Kelembapan Harian"),
+        use_container_width=True
+    )
+
+with st.expander("Grafik Per Jam (48 Jam Terakhir)"):
+    st.plotly_chart(
+        px.line(df_jam.tail(48), x="Waktu", y="Curah Hujan (mm)", title="Curah Hujan per Jam"),
+        use_container_width=True
+    )
+    st.plotly_chart(
+        px.line(df_jam.tail(48), x="Waktu", y="Suhu (°C)", title="Suhu per Jam"),
+        use_container_width=True
+    )
+    st.plotly_chart(
+        px.line(df_jam.tail(48), x="Waktu", y="Kelembapan (%)", title="Kelembapan per Jam"),
+        use_container_width=True
+    )
 
 # ------------------ MODEL PREDIKSI ------------------
 model_df = pd.DataFrame({
@@ -74,9 +120,10 @@ model_df = pd.DataFrame({
     "Kelembapan (%)": [75, 80, 78, 82, 79],
     "Hasil Panen (kg/ha)": [5100, 4800, 5300, 4500, 5500]
 })
-model = LinearRegression().fit(model_df.drop("Hasil Panen (kg/ha)", axis=1), model_df["Hasil Panen (kg/ha)"])
+model = LinearRegression().fit(
+    model_df.drop("Hasil Panen (kg/ha)", axis=1), model_df["Hasil Panen (kg/ha)"]
+)
 
-# Pastikan df_harian tidak kosong untuk prediksi
 if not df_harian.empty:
     input_now = df_harian[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
     hasil = model.predict(input_now)[0]
@@ -92,7 +139,6 @@ with st.expander("Prediksi Panen Otomatis"):
     st.metric("Prediksi Panen (kg/ha)", f"{hasil:,.0f}")
     st.success(f"Total Panen: {total_kg:,.0f} kg | Perkiraan Pendapatan: Rp {total_rp:,.0f}")
 
-    # Prediksi mingguan dan bulanan (proyeksi sederhana)
     pred_mingguan = hasil * 7 * luas_sawah
     pred_bulanan = hasil * 30 * luas_sawah
     pendapatan_mingguan = pred_mingguan * harga_gabah
@@ -102,71 +148,32 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
 
-    # ------------------ SIMPAN DAN EKSPOR ------------------
-    if st.button("💾 Simpan Hasil Prediksi ke Session"):
-        st.session_state["prediksi"] = {
-            "tanggal": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "hasil_kg_per_ha": hasil,
-            "luas_sawah": luas_sawah,
-            "harga_gabah": harga_gabah,
-            "total_kg": total_kg,
-            "total_rp": total_rp,
-            "mingguan_kg": pred_mingguan,
-            "mingguan_rp": pendapatan_mingguan,
-            "bulanan_kg": pred_bulanan,
-            "bulanan_rp": pendapatan_bulanan
-        }
-        st.success("Hasil prediksi disimpan!")
+# ------------------ TANYA JAWAB PERTANIAN OTOMATIS ------------------
+with st.expander("Tanya Jawab Pertanian (AI)"):
+    pertanyaan = st.text_input("Masukkan pertanyaan Anda tentang pertanian:")
+    if pertanyaan and OPENAI_API_KEY:
+        with st.spinner("Mencari jawaban..."):
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "Kamu adalah asisten ahli pertanian yang membantu petani dengan jawaban yang jelas dan tepat."},
+                        {"role": "user", "content": pertanyaan}
+                    ],
+                    max_tokens=200,
+                    temperature=0.7
+                )
+                jawaban = response.choices[0].message.content.strip()
+                st.success("Jawaban AI:")
+                st.write(jawaban)
+            except Exception as e:
+                st.error(f"Gagal mengambil jawaban dari AI: {e}")
+    elif pertanyaan:
+        st.warning("API Key OpenAI tidak tersedia, tidak bisa menjawab otomatis.")
 
-    if "prediksi" in st.session_state:
-        df_pred = pd.DataFrame([st.session_state["prediksi"]])
-        st.write("### Data Prediksi Tersimpan")
-        st.dataframe(df_pred)
+# ------------------ BAGIAN LAIN (Manual, laporan warga, to-do, harga komoditas, footer) ------------------
 
-        def to_excel(df):
-            output = BytesIO()
-            writer = pd.ExcelWriter(output, engine='xlsxwriter')
-            df.to_excel(writer, index=False, sheet_name='Prediksi')
-            writer.save()
-            processed_data = output.getvalue()
-            return processed_data
-
-        def get_table_download_link(df):
-            val = to_excel(df)
-            b64 = base64.b64encode(val).decode()  # encode to base64
-            return f'<a href="data:application/octet-stream;base64,{b64}" download="prediksi_panen.xlsx">📥 Unduh Excel</a>'
-
-        st.markdown(get_table_download_link(df_pred), unsafe_allow_html=True)
-
-        # Export PDF sederhana menggunakan reportlab
-        try:
-            from reportlab.lib.pagesizes import letter
-            from reportlab.pdfgen import canvas
-
-            if st.button("📤 Unduh PDF"):
-                buffer = BytesIO()
-                c = canvas.Canvas(buffer, pagesize=letter)
-                c.drawString(100, 750, "Laporan Prediksi Panen")
-                c.drawString(100, 730, f"Tanggal: {st.session_state['prediksi']['tanggal']}")
-                c.drawString(100, 710, f"Prediksi (kg/ha): {st.session_state['prediksi']['hasil_kg_per_ha']:.0f}")
-                c.drawString(100, 690, f"Luas Sawah (ha): {st.session_state['prediksi']['luas_sawah']}")
-                c.drawString(100, 670, f"Harga Gabah (Rp/kg): {st.session_state['prediksi']['harga_gabah']}")
-                c.drawString(100, 650, f"Total Panen (kg): {st.session_state['prediksi']['total_kg']:.0f}")
-                c.drawString(100, 630, f"Total Pendapatan (Rp): {st.session_state['prediksi']['total_rp']:.0f}")
-                c.drawString(100, 610, f"Proyeksi Mingguan (kg): {st.session_state['prediksi']['mingguan_kg']:.0f}")
-                c.drawString(100, 590, f"Proyeksi Bulanan (kg): {st.session_state['prediksi']['bulanan_kg']:.0f}")
-                c.showPage()
-                c.save()
-                pdf = buffer.getvalue()
-                buffer.close()
-
-                b64_pdf = base64.b64encode(pdf).decode()
-                href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="prediksi_panen.pdf">📥 Unduh PDF</a>'
-                st.markdown(href, unsafe_allow_html=True)
-        except ImportError:
-            st.warning("Library 'reportlab' belum terpasang, install untuk fitur PDF export.")
-
-# ------------------ PERHITUNGAN MANUAL ------------------
+# Perhitungan manual prediksi panen
 with st.expander("Hitung Manual Prediksi Panen"):
     ch = st.number_input("Curah Hujan (mm)", value=5.0, key="manual_ch")
     suhu = st.number_input("Suhu Maks (°C)", value=32.0, key="manual_suhu")
@@ -181,14 +188,7 @@ with st.expander("Hitung Manual Prediksi Panen"):
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
 
-# ------------------ TANYA JAWAB MANUAL ------------------
-with st.expander("Tanya Jawab Pertanian (Manual)"):
-    pertanyaan = st.text_input("Masukkan pertanyaan Anda:")
-    if pertanyaan:
-        st.info("(Jawaban disesuaikan manual oleh tim pertanian)")
-        st.write("Contoh jawaban: Gunakan pupuk urea saat pertumbuhan vegetatif untuk memperkuat batang.")
-
-# ------------------ LAPORAN WARGA ------------------
+# Laporan warga
 with st.expander("Laporan Warga"):
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
@@ -214,7 +214,7 @@ with st.expander("Laporan Warga"):
                     st.session_state.laporan.pop(i)
                     st.experimental_rerun()
 
-# ------------------ TO-DO ------------------
+# Pengingat harian (to-do)
 with st.expander("Pengingat Harian"):
     tugas = st.text_input("Tambah tugas:")
     if "todo" not in st.session_state:
@@ -228,13 +228,13 @@ with st.expander("Pengingat Harian"):
             st.session_state.todo.pop(i)
             st.experimental_rerun()
 
-# ------------------ HARGA KOMODITAS ------------------
+# Harga komoditas
 with st.expander("Harga Komoditas"):
     st.table(pd.DataFrame({
         "Komoditas": ["Gabah Kering", "Jagung", "Beras Medium"],
         "Harga (Rp/kg)": [6500, 5300, 10500]
     }))
 
-# ------------------ FOOTER ------------------
+# Footer
 st.markdown("---")
 st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
