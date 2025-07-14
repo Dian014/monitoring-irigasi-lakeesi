@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # ------------------ JUDUL ------------------
-st.title("🌿 Dashboard Cerdas Petani – Kelurahan Lakessi")
+st.title("Dashboard Pertanian Cerdas – Kelurahan Lakessi")
 st.markdown("""
 📍 *Lokasi: Kelurahan Lakessi, Kecamatan Maritengngae, Sidrap, Sulawesi Selatan*  
 🧑‍💻 *Pengembang: Dian Eka Putra* | 📧 ekaputradian01@gmail.com | 📱 085654073752  
@@ -178,4 +178,4 @@ with st.expander("💹 Harga Pasar Komoditas (Dummy)"):
 
 # ------------------ FOOTER ------------------
 st.markdown("---")
-st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
+st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital by Dian Eka Putra")
