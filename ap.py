@@ -139,21 +139,50 @@ if not df_harian.empty:
 else:
     hasil = 0
 
-# ------------------ PREDIKSI PANEN OTOMATIS ------------------
-with st.expander("Prediksi Panen Otomatis"):
-    luas_sawah = st.number_input("Luas Sawah (ha)", value=1.0, key="luas_sawah")
-    harga_gabah = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="harga_gabah")
-    total_kg = hasil * luas_sawah
-    total_rp = total_kg * harga_gabah
-    st.metric("Prediksi Panen (kg/ha)", f"{hasil:,.0f}")
-    st.success(f"Total Panen: {total_kg:,.0f} kg | Perkiraan Pendapatan: Rp {total_rp:,.0f}")
+# ------------------ PREDIKSI PANEN (Manual + Otomatis) ------------------
+with st.expander("Prediksi Panen"):
 
-    pred_mingguan = hasil * 7 * luas_sawah
-    pred_bulanan = hasil * 30 * luas_sawah
-    pendapatan_mingguan = pred_mingguan * harga_gabah
-    pendapatan_bulanan = pred_bulanan * harga_gabah
+    # Input manual
+    st.subheader("Input Manual")
+    ch_manual = st.number_input("Curah Hujan (mm)", value=5.0, key="manual_ch")
+    suhu_manual = st.number_input("Suhu Maks (°C)", value=32.0, key="manual_suhu")
+    hum_manual = st.number_input("Kelembapan (%)", value=78.0, key="manual_hum")
+    luas_manual = st.number_input("Luas Lahan (ha)", value=1.0, key="manual_luas")
+    harga_manual = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="manual_harga")
 
-    st.write("### Proyeksi Panen Lebih Panjang:")
+    pred_manual = model.predict([[ch_manual, suhu_manual, hum_manual]])[0]
+    total_manual = pred_manual * luas_manual
+    pendapatan_manual = total_manual * harga_manual
+
+    # Prediksi otomatis (dari data harian rata-rata)
+    st.subheader("Prediksi Otomatis (Berdasarkan Data Cuaca)")
+    luas_auto = st.number_input("Luas Sawah (ha) (otomatis)", value=1.0, key="auto_luas")
+    harga_auto = st.number_input("Harga Gabah (Rp/kg) (otomatis)", value=6500, key="auto_harga")
+
+    if not df_harian.empty:
+        input_auto = df_harian[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
+        pred_auto = model.predict(input_auto)[0]
+    else:
+        pred_auto = 0
+    total_auto = pred_auto * luas_auto
+    pendapatan_auto = total_auto * harga_auto
+
+    # Tampilkan hasil keduanya
+    st.markdown("### Hasil Prediksi Panen Manual")
+    st.metric("Prediksi Panen (kg/ha)", f"{pred_manual:,.0f}")
+    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
+
+    st.markdown("### Hasil Prediksi Panen Otomatis")
+    st.metric("Prediksi Panen (kg/ha)", f"{pred_auto:,.0f}")
+    st.success(f"Total: {total_auto:,.0f} kg | Rp {pendapatan_auto:,.0f}")
+
+    # Proyeksi panen jangka panjang (otomatis)
+    pred_mingguan = pred_auto * 7 * luas_auto
+    pred_bulanan = pred_auto * 30 * luas_auto
+    pendapatan_mingguan = pred_mingguan * harga_auto
+    pendapatan_bulanan = pred_bulanan * harga_auto
+
+    st.write("### Proyeksi Panen Otomatis Lebih Panjang:")
     st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
 
@@ -191,21 +220,6 @@ with st.expander("Kalkulator Pemupukan Dasar"):
     for jenis, kg_per_ha in pupuk.items():
         total_kg = kg_per_ha * luas_lahan
         st.write(f"- {jenis}: {total_kg} kg")
-
-# Perhitungan manual prediksi panen
-with st.expander("Hitung Manual Prediksi Panen"):
-    ch = st.number_input("Curah Hujan (mm)", value=5.0, key="manual_ch")
-    suhu = st.number_input("Suhu Maks (°C)", value=32.0, key="manual_suhu")
-    hum = st.number_input("Kelembapan (%)", value=78.0, key="manual_hum")
-    luas = st.number_input("Luas Lahan (ha)", value=1.0, key="manual_luas")
-    harga = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="manual_harga")
-
-    pred_manual = model.predict([[ch, suhu, hum]])[0]
-    total_manual = pred_manual * luas
-    pendapatan_manual = total_manual * harga
-
-    st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
-    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
