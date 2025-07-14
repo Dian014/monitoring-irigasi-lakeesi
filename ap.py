@@ -167,22 +167,38 @@ with st.expander("Prediksi Panen"):
     total_auto = pred_auto * luas_auto
     pendapatan_auto = total_auto * harga_auto
 
-    # Tampilkan hasil keduanya
-    st.markdown("### Hasil Prediksi Panen Manual")
-    st.metric("Prediksi Panen (kg/ha)", f"{pred_manual:,.0f}")
-    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
+    # Proyeksi Panen Tahunan Otomatis (2 Kali Panen)
+    st.markdown("### 📆 Proyeksi Panen Tahunan (2 Kali Panen Otomatis)")
 
-    st.markdown("### Hasil Prediksi Panen Otomatis")
-    st.metric("Prediksi Panen (kg/ha)", f"{pred_auto:,.0f}")
-    st.success(f"Total: {total_auto:,.0f} kg | Rp {pendapatan_auto:,.0f}")
-   
-    # Proyeksi panen 2 kali setahun
-    total_panen_tahunan = total_auto * 2
-    pendapatan_tahunan = total_panen_tahunan * harga_auto
+    # Gunakan data 7 hari pertama untuk panen 1
+    df_panen1 = df_harian.head(7)
+    input_panen1 = df_panen1[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
+    pred1 = model.predict(input_panen1)[0]
 
-    st.write("### Proyeksi Panen Otomatis Tahunan (2 Kali Panen):")
-    st.write(f"- Total Panen Tahunan: {total_panen_tahunan:,.0f} kg")
-    st.write(f"- Perkiraan Pendapatan Tahunan: Rp {pendapatan_tahunan:,.0f}")
+    # Gunakan data hari ke-8 sampai ke-14 untuk panen 2 (anggap beda musim)
+    df_panen2 = df_harian[7:14] if len(df_harian) >= 14 else df_harian.tail(7)
+    input_panen2 = df_panen2[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
+    pred2 = model.predict(input_panen2)[0]
+
+    # Input luas & harga
+    luas_ha = st.number_input("Luas Lahan (ha)", value=1.0, key="luas_tahunan")
+    harga_rp = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="harga_tahunan")
+
+    # Perhitungan
+    total1 = pred1 * luas_ha
+    total2 = pred2 * luas_ha
+    hasil_total = total1 + total2
+    uang_total = hasil_total * harga_rp
+
+    # Tampilkan hasil
+    st.write("#### 🌾 Panen Pertama (Data Minggu Ini)")
+    st.write(f"- Prediksi Hasil: {pred1:,.0f} kg/ha | Total: {total1:,.0f} kg | Rp {total1 * harga_rp:,.0f}")
+
+    st.write("#### 🌾 Panen Kedua (6 Bulan Kemudian, Data Prediksi Minggu Berikutnya)")
+    st.write(f"- Prediksi Hasil: {pred2:,.0f} kg/ha | Total: {total2:,.0f} kg | Rp {total2 * harga_rp:,.0f}")
+
+    st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
+
 
 # Tanya Jawab Pertanian Manual
 st.markdown("---")
