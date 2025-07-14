@@ -232,21 +232,22 @@ with st.expander("📢 Laporan Warga"):
         isi = st.text_area("Deskripsi")
         kirim = st.form_submit_button("Kirim")
 
-        if kirim:
-            if nama and kontak and isi:
-                new_laporan = {
-                    "Nama": nama,
-                    "Kontak": kontak,
-                    "Jenis": jenis,
-                    "Lokasi": lokasi,
-                    "Deskripsi": isi,
-                    "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
-                }
-                st.session_state.laporan.append(new_laporan)
-                save_data(LAPORAN_FILE, st.session_state.laporan)
-                st.experimental_rerun()
-            else:
-                st.warning("Lengkapi semua isian sebelum mengirim laporan.")
+if kirim:
+    if nama and kontak and isi:
+        new_laporan = {
+            "Nama": nama,
+            "Kontak": kontak,
+            "Jenis": jenis,
+            "Lokasi": lokasi,
+            "Deskripsi": isi,
+            "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
+        }
+        st.session_state.laporan.append(new_laporan)
+        save_data(LAPORAN_FILE, st.session_state.laporan)
+        # st.experimental_rerun()  <-- komen dulu ini
+        st.success("Laporan berhasil dikirim.")
+    else:
+        st.warning("Lengkapi semua isian sebelum mengirim laporan.")
 
     # Tampilkan laporan warga (di luar form)
     for i, lap in enumerate(st.session_state.laporan):
