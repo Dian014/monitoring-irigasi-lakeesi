@@ -333,11 +333,12 @@ with st.expander("Pengingat Harian (To-Do List)"):
             st.session_state.todo_update = True
 
 # Panggil rerun sekali jika ada update di laporan atau todo
+# Panggil rerun sekali jika ada update di laporan atau todo
 if st.session_state.laporan_update or st.session_state.todo_update:
     st.session_state.laporan_update = False
     st.session_state.todo_update = False
     try:
-        st.experimental_rerun()
+        st.runtime.scriptrunner.request_rerun()
     except Exception as e:
         st.error(f"Terjadi error saat reload: {e}")
 
