@@ -205,34 +205,25 @@ with st.expander("Hitung Manual Prediksi Panen"):
     pendapatan_manual = total_manual * harga
 
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
-    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
-
-# Path file untuk simpan data laporan warga dan todo
+    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}"
+              
+# ------------------ LAPORAN WARGA ------------------
 LAPORAN_FILE = "laporan_warga.json"
-TODO_FILE = "todo_harian.json"
 
-# Fungsi load data dari file JSON
 def load_data(filename):
     if os.path.exists(filename):
         with open(filename, "r", encoding="utf-8") as f:
             return json.load(f)
-    else:
-        return []
+    return []
 
-# Fungsi simpan data ke file JSON
 def save_data(filename, data):
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# Load data saat awal program
 if "laporan" not in st.session_state:
     st.session_state.laporan = load_data(LAPORAN_FILE)
 
-if "todo" not in st.session_state:
-    st.session_state.todo = load_data(TODO_FILE)
-
-# Bagian Laporan Warga
-with st.expander("Laporan Warga"):
+with st.expander("📢 Laporan Warga"):
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
         kontak = st.text_input("Kontak")
@@ -253,21 +244,22 @@ with st.expander("Laporan Warga"):
                 }
                 st.session_state.laporan.append(new_laporan)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
-                st.success("Laporan terkirim!")
+                st.success("✅ Laporan berhasil dikirim!")
+                st.experimental_rerun()
             else:
-                st.error("Mohon isi semua field Nama, Kontak, dan Deskripsi.")
+                st.error("❗ Mohon lengkapi semua isian.")
 
-    # Tampilkan laporan dan tombol hapus
     for i, lap in enumerate(st.session_state.laporan):
         col1, col2 = st.columns([0.9, 0.1])
         with col1:
-            st.markdown(f"**{lap['Tanggal']}**  \n{lap['Jenis']}: {lap['Deskripsi']} oleh *{lap['Nama']}* – Lokasi: {lap['Lokasi']}")
+            st.markdown(f"🗓️ **{lap['Tanggal']}**  \n🔎 *{lap['Jenis']}* oleh **{lap['Nama']}**  \n📍 {lap['Lokasi']}  \n📝 {lap['Deskripsi']}")
         with col2:
-            if st.button("Hapus", key=f"del_lap_{i}"):
+            if st.button("🗑️ Hapus", key=f"del_lap_{i}"):
                 st.session_state.laporan.pop(i)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
                 st.experimental_rerun()
 
+# ------------------ PENGINGAT HARIAN ------------------
 TODO_FILE = "todo_harian.json"
 
 def load_todo():
@@ -283,24 +275,23 @@ def save_todo(data):
 if "todo" not in st.session_state:
     st.session_state.todo = load_todo()
 
-with st.expander("Pengingat Harian"):
-    tugas_baru = st.text_input("Tambah tugas:")
-    if st.button("Simpan", key="btn_simpan_tugas"):
-        if tugas_baru.strip() != "":
+with st.expander("📝 Pengingat Harian (To-Do List)"):
+    tugas_baru = st.text_input("Tambah Tugas Baru:")
+    if st.button("✅ Simpan", key="btn_simpan_tugas"):
+        if tugas_baru.strip():
             st.session_state.todo.append(tugas_baru.strip())
             save_todo(st.session_state.todo)
-            st.experimental_rerun()  # rerun hanya di sini, setelah append dan save
+            st.experimental_rerun()
         else:
-            st.warning("Tugas tidak boleh kosong!")
+            st.warning("⚠️ Tugas tidak boleh kosong.")
 
-    # Tampilkan daftar tugas dengan tombol hapus
     for i, tugas in enumerate(st.session_state.todo):
         col1, col2 = st.columns([0.9, 0.1])
         col1.markdown(f"- {tugas}")
-        if col2.button("Hapus", key=f"hapus_todo_{i}"):
+        if col2.button("🗑️ Hapus", key=f"hapus_todo_{i}"):
             st.session_state.todo.pop(i)
             save_todo(st.session_state.todo)
-            st.experimental_rerun()  # rerun juga hanya di sini setelah hapus
+            st.experimental_rerun()
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
