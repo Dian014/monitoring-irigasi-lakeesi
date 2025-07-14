@@ -6,6 +6,7 @@ import folium
 from streamlit_folium import st_folium
 from sklearn.linear_model import LinearRegression
 import numpy as np
+import io
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -56,7 +57,7 @@ df_harian = pd.DataFrame({
 threshold = st.sidebar.slider("Batas Curah Hujan untuk Irigasi (mm):", 0, 20, 5)
 df_harian["Rekomendasi Irigasi"] = df_harian["Curah Hujan (mm)"].apply(lambda x: "Irigasi Diperlukan" if x < threshold else "Cukup")
 
-# ------------------ DATA PER JAM ------------------
+# Data per jam
 df_jam = pd.DataFrame({
     "Waktu": pd.to_datetime(data["hourly"]["time"]),
     "Curah Hujan (mm)": data["hourly"]["precipitation"],
@@ -81,7 +82,7 @@ with st.expander("Data Harian"):
 with st.expander("Data Per Jam (48 jam terakhir)"):
     st.dataframe(df_jam.tail(48), use_container_width=True)
 
-# ------------------ PREDIKSI PANEN OTOMATIS ------------------
+# ------------------ MODEL PREDIKSI ------------------
 model_df = pd.DataFrame({
     "Curah Hujan (mm)": [3.2, 1.0, 5.5, 0.0, 6.0],
     "Suhu (°C)": [30, 32, 29, 31, 33],
@@ -89,16 +90,56 @@ model_df = pd.DataFrame({
     "Hasil Panen (kg/ha)": [5100, 4800, 5300, 4500, 5500]
 })
 model = LinearRegression().fit(model_df.drop("Hasil Panen (kg/ha)", axis=1), model_df["Hasil Panen (kg/ha)"])
-input_now = df_harian[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
-hasil = model.predict(input_now)[0]
 
+# Fungsi prediksi panen lebih panjang (harian/mingguan)
+def prediksi_panen_berkala(df, periode='harian'):
+    hasil_prediksi = []
+    if periode == 'harian':
+        for i, row in df.iterrows():
+            x = np.array([[row["Curah Hujan (mm)"], row["Suhu Maks (°C)"], row["Kelembapan (%)"]]])
+            hasil_prediksi.append(model.predict(x)[0])
+        df["Prediksi Panen (kg/ha)"] = hasil_prediksi
+        return df[["Tanggal", "Prediksi Panen (kg/ha)"]]
+    elif periode == 'mingguan':
+        df_week = df.resample('W-Mon', on="Tanggal").mean().reset_index()
+        hasil_prediksi = []
+        for i, row in df_week.iterrows():
+            x = np.array([[row["Curah Hujan (mm)"], row["Suhu Maks (°C)"], row["Kelembapan (%)"]]])
+            hasil_prediksi.append(model.predict(x)[0])
+        df_week["Prediksi Panen (kg/ha)"] = hasil_prediksi
+        return df_week[["Tanggal", "Prediksi Panen (kg/ha)"]]
+    else:
+        return pd.DataFrame()
+
+# ------------------ PREDIKSI PANEN OTOMATIS ------------------
 with st.expander("Prediksi Panen Otomatis"):
     luas_sawah = st.number_input("Luas Sawah (ha)", value=1.0)
-    harga_gabah = st.number_input("Harga Gabah (Rp/kg)", value=6500)
+    harga_gabah = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="harga_otomatis")
     total_kg = hasil * luas_sawah
     total_rp = total_kg * harga_gabah
     st.metric("Prediksi Panen", f"{hasil:,.0f} kg/ha")
     st.success(f"Total: {total_kg:,.0f} kg | Rp {total_rp:,.0f}")
+
+    if st.button("💾 Simpan Hasil Prediksi Otomatis"):
+        # Simpan hasil prediksi otomatis
+        prediksi_otomatis = pd.DataFrame({
+            "Luas Sawah (ha)": [luas_sawah],
+            "Harga Gabah (Rp/kg)": [harga_gabah],
+            "Prediksi Panen (kg/ha)": [hasil],
+            "Total Panen (kg)": [total_kg],
+            "Total Pendapatan (Rp)": [total_rp]
+        })
+        csv = prediksi_otomatis.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Unduh Hasil Prediksi Otomatis (CSV)", data=csv, file_name="prediksi_otomatis.csv", mime="text/csv")
+
+    # Prediksi panen lebih panjang
+    periode_prediksi = st.selectbox("Pilih Periode Prediksi", options=["harian", "mingguan"])
+    df_prediksi_berkala = prediksi_panen_berkala(df_harian, periode=periode_prediksi)
+    st.dataframe(df_prediksi_berkala)
+
+    if st.button("💾 Simpan Prediksi Berkala"):
+        csv_berkala = df_prediksi_berkala.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Unduh Prediksi Berkala (CSV)", data=csv_berkala, file_name=f"prediksi_berkala_{periode_prediksi}.csv", mime="text/csv")
 
 # ------------------ PERHITUNGAN MANUAL ------------------
 with st.expander("Hitung Manual Prediksi Panen"):
@@ -106,12 +147,26 @@ with st.expander("Hitung Manual Prediksi Panen"):
     suhu = st.number_input("Suhu Maks (°C)", value=32.0)
     hum = st.number_input("Kelembapan (%)", value=78.0)
     luas = st.number_input("Luas Lahan (ha)", value=1.0)
-    harga = st.number_input("Harga Gabah (Rp/kg)", value=6500)
+    harga = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="harga_manual")
     pred_manual = model.predict([[ch, suhu, hum]])[0]
     total_manual = pred_manual * luas
     pendapatan_manual = total_manual * harga
     st.metric("Prediksi Panen Manual", f"{pred_manual:,.0f} kg/ha")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
+
+    if st.button("💾 Simpan Hasil Prediksi Manual"):
+        pred_manual_df = pd.DataFrame({
+            "Curah Hujan (mm)": [ch],
+            "Suhu Maks (°C)": [suhu],
+            "Kelembapan (%)": [hum],
+            "Luas Lahan (ha)": [luas],
+            "Harga Gabah (Rp/kg)": [harga],
+            "Prediksi Panen (kg/ha)": [pred_manual],
+            "Total Panen (kg)": [total_manual],
+            "Total Pendapatan (Rp)": [pendapatan_manual]
+        })
+        csv_manual = pred_manual_df.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Unduh Hasil Prediksi Manual (CSV)", data=csv_manual, file_name="prediksi_manual.csv", mime="text/csv")
 
 # ------------------ TANYA JAWAB MANUAL ------------------
 with st.expander("Tanya Jawab Pertanian (Manual)"):
