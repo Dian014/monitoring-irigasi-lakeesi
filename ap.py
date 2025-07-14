@@ -206,7 +206,27 @@ with st.expander("Hitung Manual Prediksi Panen"):
 
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
-              
+
+# Harga komoditas
+with st.expander("Harga Komoditas"):
+    st.table(pd.DataFrame({
+        "Komoditas": ["Gabah Kering", "Jagung", "Beras Medium"],
+        "Harga (Rp/kg)": [6500, 5300, 10500]
+    }))
+
+# ------------------ TIPS PERTANIAN ------------------
+with st.expander("Tips Pertanian Harian Otomatis"):
+    for _, row in df_harian.iterrows():
+        tips = []
+        if row["Curah Hujan (mm)"] < threshold:
+            tips.append("Lakukan irigasi untuk menjaga kelembaban tanah")
+        if row["Suhu Maks (°C)"] > 33:
+            tips.append("Waspadai stres panas pada padi")
+        if row["Kelembapan (%)"] > 85:
+            tips.append("Tingkatkan kewaspadaan terhadap penyakit jamur")
+        if not tips:
+            tips.append("Kondisi ideal untuk pertumbuhan padi")
+        st.markdown(f" {row['Tanggal'].date()}: {'; '.join(tips)}")
 
 # ------------------ LAPORAN WARGA ------------------
 LAPORAN_FILE = "laporan_warga.json"
@@ -230,7 +250,7 @@ if "laporan" not in st.session_state:
 if "laporan_update" not in st.session_state:
     st.session_state.laporan_update = False  # flag untuk rerun laporan
 
-with st.expander("📢 Laporan Warga"):
+with st.expander("Laporan Warga"):
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
         kontak = st.text_input("Kontak")
@@ -261,10 +281,10 @@ with st.expander("📢 Laporan Warga"):
         col1, col2 = st.columns([0.9, 0.1])
         with col1:
             st.markdown(
-                f"🗓️ **{lap['Tanggal']}**  \n"
-                f"🔎 *{lap['Jenis']}* oleh **{lap['Nama']}**  \n"
-                f"📍 {lap['Lokasi']}  \n"
-                f"📝 {lap['Deskripsi']}"
+                f"**{lap['Tanggal']}**  \n"
+                f"*{lap['Jenis']}* oleh **{lap['Nama']}**  \n"
+                f"{lap['Lokasi']}  \n"
+                f"{lap['Deskripsi']}"
             )
         with col2:
             if st.button("🗑️ Hapus", key=f"del_lap_{i}"):
@@ -294,7 +314,7 @@ if "todo" not in st.session_state:
 if "todo_update" not in st.session_state:
     st.session_state.todo_update = False  # flag untuk rerun todo
 
-with st.expander("📝 Pengingat Harian (To-Do List)"):
+with st.expander("Pengingat Harian (To-Do List)"):
     tugas_baru = st.text_input("Tambah Tugas Baru:")
     if st.button("✅ Simpan", key="btn_simpan_tugas"):
         if tugas_baru.strip():
@@ -317,27 +337,6 @@ if st.session_state.laporan_update or st.session_state.todo_update:
     st.session_state.laporan_update = False
     st.session_state.todo_update = False
     st.experimental_rerun()
-
-# Harga komoditas
-with st.expander("Harga Komoditas"):
-    st.table(pd.DataFrame({
-        "Komoditas": ["Gabah Kering", "Jagung", "Beras Medium"],
-        "Harga (Rp/kg)": [6500, 5300, 10500]
-    }))
-
-# ------------------ TIPS PERTANIAN ------------------
-with st.expander("Tips Pertanian Harian Otomatis"):
-    for _, row in df_harian.iterrows():
-        tips = []
-        if row["Curah Hujan (mm)"] < threshold:
-            tips.append("Lakukan irigasi untuk menjaga kelembaban tanah")
-        if row["Suhu Maks (°C)"] > 33:
-            tips.append("Waspadai stres panas pada padi")
-        if row["Kelembapan (%)"] > 85:
-            tips.append("Tingkatkan kewaspadaan terhadap penyakit jamur")
-        if not tips:
-            tips.append("Kondisi ideal untuk pertumbuhan padi")
-        st.markdown(f" {row['Tanggal'].date()}: {'; '.join(tips)}")
 
 # Footer
 st.markdown("---")
