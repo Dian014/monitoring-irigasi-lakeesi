@@ -9,6 +9,7 @@ from sklearn.linear_model import LinearRegression
 from io import BytesIO
 import base64
 import openai
+from datetime import datetime
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -99,19 +100,24 @@ with st.expander("Grafik Harian"):
         use_container_width=True
     )
 
+df_jam_prediksi = df_jam[df_jam["Waktu"] > datetime.now()].head(48)
+
 with st.expander("Grafik Per Jam (48 Jam Ke Depan)"):
-    st.plotly_chart(
-        px.line(df_jam.head(48), x="Waktu", y="Curah Hujan (mm)", title="Prediksi Curah Hujan per Jam (48 Jam Ke Depan)"),
-        use_container_width=True
-    )
-    st.plotly_chart(
-        px.line(df_jam.head(48), x="Waktu", y="Suhu (°C)", title="Prediksi Suhu per Jam (48 Jam Ke Depan)"),
-        use_container_width=True
-    )
-    st.plotly_chart(
-        px.line(df_jam.head(48), x="Waktu", y="Kelembapan (%)", title="Prediksi Kelembapan per Jam (48 Jam Ke Depan)"),
-        use_container_width=True
-    )
+    if df_jam_prediksi.empty:
+        st.warning("Tidak ada data prediksi ke depan tersedia saat ini.")
+    else:
+        st.plotly_chart(
+            px.line(df_jam_prediksi, x="Waktu", y="Curah Hujan (mm)", title="Prediksi Curah Hujan per Jam (48 Jam Ke Depan)"),
+            use_container_width=True
+        )
+        st.plotly_chart(
+            px.line(df_jam_prediksi, x="Waktu", y="Suhu (°C)", title="Prediksi Suhu per Jam (48 Jam Ke Depan)"),
+            use_container_width=True
+        )
+        st.plotly_chart(
+            px.line(df_jam_prediksi, x="Waktu", y="Kelembapan (%)", title="Prediksi Kelembapan per Jam (48 Jam Ke Depan)"),
+            use_container_width=True
+        )
 
 # ------------------ MODEL PREDIKSI ------------------
 model_df = pd.DataFrame({
