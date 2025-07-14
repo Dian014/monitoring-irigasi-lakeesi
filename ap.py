@@ -6,7 +6,6 @@ import folium
 from streamlit_folium import st_folium
 from sklearn.linear_model import LinearRegression
 import numpy as np
-import openai
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -18,13 +17,6 @@ st.set_page_config(
 # ------------------ INPUT KOORDINAT DINAMIS ------------------
 LAT = st.sidebar.number_input("Latitude", value=-3.921406, format="%.6f")
 LON = st.sidebar.number_input("Longitude", value=119.772731, format="%.6f")
-
-# ------------------ INISIALISASI OPENAI ------------------
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
-if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
-else:
-    openai.api_key = None
 
 # ------------------ HEADER ------------------
 st.title("🌱 Sistem Monitoring Irigasi & Pertanian Lakessi")
@@ -65,6 +57,43 @@ df_harian = pd.DataFrame({
 threshold = st.sidebar.slider("💧 Batas Curah Hujan untuk Irigasi (mm):", 0, 20, 5)
 df_harian["Rekomendasi Irigasi"] = df_harian["Curah Hujan (mm)"].apply(lambda x: "🚿 Irigasi Diperlukan" if x < threshold else "✅ Cukup")
 
+# Model prediksi
+model_df = pd.DataFrame({
+    "Curah Hujan (mm)": [3.2, 1.0, 5.5, 0.0, 6.0],
+    "Suhu (°C)": [30, 32, 29, 31, 33],
+    "Kelembapan (%)": [75, 80, 78, 82, 79],
+    "Hasil Panen (kg/ha)": [5100, 4800, 5300, 4500, 5500]
+})
+model = LinearRegression().fit(model_df.drop("Hasil Panen (kg/ha)", axis=1), model_df["Hasil Panen (kg/ha)"])
+
+input_now = df_harian[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
+hasil = model.predict(input_now)[0]
+
+# ------------------ PREDIKSI PANEN OTOMATIS ------------------
+with st.expander("🪲 Prediksi Panen Otomatis"):
+    st.metric("Prediksi Panen", f"{hasil:,.0f} kg/ha")
+    luas_sawah = st.number_input("Luas Sawah (ha)", value=1.0)
+    harga_gabah = st.number_input("Harga Gabah (Rp/kg)", value=6500)
+    total_kg = hasil * luas_sawah
+    total_rp = total_kg * harga_gabah
+    st.success(f"📅 Estimasi Total: {total_kg:,.0f} kg | Rp {total_rp:,.0f}")
+
+# ------------------ PERHITUNGAN MANUAL ------------------
+with st.expander("🖋️ Hitung Manual Prediksi Panen"):
+    ch = st.number_input("Curah Hujan (mm)", value=5.0)
+    suhu = st.number_input("Suhu Maks (°C)", value=32.0)
+    hum = st.number_input("Kelembapan (%)", value=78.0)
+    luas = st.number_input("Luas Lahan (ha)", value=1.0, key="manual_luas")
+    harga = st.number_input("Harga Gabah (Rp/kg)", value=6500, key="manual_harga")
+
+    pred_manual = model.predict([[ch, suhu, hum]])[0]
+    total_manual = pred_manual * luas
+    pendapatan_manual = total_manual * harga
+
+    st.metric("Prediksi Panen Manual", f"{pred_manual:,.0f} kg/ha")
+    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
+
+# ------------------ TABEL ------------------
 df_jam = pd.DataFrame({
     "Waktu": pd.to_datetime(data["hourly"]["time"]),
     "Curah Hujan (mm)": data["hourly"]["precipitation"],
@@ -72,11 +101,10 @@ df_jam = pd.DataFrame({
     "Kelembapan (%)": data["hourly"]["relative_humidity_2m"]
 })
 
-# ------------------ TABEL ------------------
-with st.expander("📋 Data Harian & Irigasi"):
+with st.expander("📋 Data Harian"):
     st.dataframe(df_harian, use_container_width=True)
 
-with st.expander("📋 Data Per Jam (48 jam terakhir)"):
+with st.expander("📈 Data Per Jam (48 jam terakhir)"):
     st.dataframe(df_jam.tail(48), use_container_width=True)
 
 # ------------------ GRAFIK ------------------
@@ -85,28 +113,9 @@ with st.expander("📊 Grafik Harian"):
     fig.add_hline(y=threshold, line_dash="dash", line_color="red")
     st.plotly_chart(fig, use_container_width=True)
 
-with st.expander("📈 Grafik Per Jam"):
+with st.expander("📉 Grafik Per Jam"):
     st.plotly_chart(px.line(df_jam.tail(48), x="Waktu", y="Suhu (°C)"), use_container_width=True)
     st.plotly_chart(px.line(df_jam.tail(48), x="Waktu", y="Kelembapan (%)"), use_container_width=True)
-
-# ------------------ ESTIMASI PANEN ------------------
-with st.expander("🌾 Estimasi Tanam & Panen"):
-    waktu_tanam = df_harian["Tanggal"].min().date()
-    waktu_panen = waktu_tanam + pd.Timedelta(days=100)
-    st.info(f"Tanam: {waktu_tanam} | Panen: {waktu_panen}")
-
-# ------------------ PREDIKSI HASIL PANEN ------------------
-with st.expander("🤖 Prediksi Hasil Panen"):
-    model_df = pd.DataFrame({
-        "Curah Hujan (mm)": [3.2, 1.0, 5.5, 0.0, 6.0],
-        "Suhu (°C)": [30, 32, 29, 31, 33],
-        "Kelembapan (%)": [75, 80, 78, 82, 79],
-        "Hasil Panen (kg/ha)": [5100, 4800, 5300, 4500, 5500]
-    })
-    model = LinearRegression().fit(model_df.drop("Hasil Panen (kg/ha)", axis=1), model_df["Hasil Panen (kg/ha)"])
-    input_now = df_harian[["Curah Hujan (mm)", "Suhu Maks (°C)", "Kelembapan (%)"]].mean().values.reshape(1, -1)
-    hasil = model.predict(input_now)[0]
-    st.metric("Prediksi Panen", f"{hasil:,.0f} kg/ha")
 
 # ------------------ TANYA JAWAB MANUAL ------------------
 with st.expander("💬 Tanya Jawab Pertanian (manual GPT)"):
@@ -142,7 +151,7 @@ with st.expander("📝 Laporan Warga"):
         for i, lap in enumerate(st.session_state.laporan):
             col1, col2 = st.columns([0.9, 0.1])
             with col1:
-                st.markdown(f"**{lap['Jenis']}**: {lap['Deskripsi']} oleh {lap['Nama']} – Lokasi: {lap['Lokasi']}")
+                st.markdown(f"{lap['Jenis']}: {lap['Deskripsi']} oleh {lap['Nama']} – Lokasi: {lap['Lokasi']}")
             with col2:
                 if st.button("❌", key=f"del_lap_{i}"):
                     st.session_state.laporan.pop(i)
@@ -171,4 +180,4 @@ with st.expander("💹 Harga Komoditas"):
 
 # ------------------ FOOTER ------------------
 st.markdown("---")
-st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
+st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
