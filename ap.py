@@ -131,8 +131,8 @@ with st.expander("🤖 Prediksi Hasil Panen Otomatis"):
 
 # ------------------ ESTIMASI PENDAPATAN OTOMATIS ------------------
 with st.expander("💰 Estimasi Pendapatan Otomatis"):
-    luas_sawah_ha = 100
-    harga_gabah = 6700  # Harga real di Sidrap
+    luas_sawah_ha = 290
+    harga_gabah = 6500  # Harga real di Sidrap
     total_produksi = prediksi * luas_sawah_ha
     pendapatan = total_produksi * harga_gabah
     st.success(f"🧮 Estimasi Pendapatan (100 ha): Rp {pendapatan:,.0f}")
@@ -143,7 +143,7 @@ with st.expander("📝 Hitung Pintar Manual"):
     suhu = st.number_input("Suhu Maks (°C)", value=31.0)
     kelembapan = st.number_input("Kelembapan (%)", value=80.0)
     luas_user = st.number_input("Luas Sawah (ha)", value=1.0)
-    harga_user = st.number_input("Harga Gabah (Rp/kg)", value=6700)
+    harga_user = st.number_input("Harga Gabah (Rp/kg)", value=6500)
 
     prediksi_manual = model.predict(np.array([[curah, suhu, kelembapan]]))[0]
     hasil_user = prediksi_manual * luas_user
@@ -169,4 +169,4 @@ with st.expander("🧠 Tips Pertanian Harian Otomatis"):
 
 # ------------------ FOOTER ------------------
 st.markdown("---")
-st.markdown("© 2025 Kelurahan Lakessi – Program Kerja KKN oleh Dian Eka Putra")
+st.markdown("© 2025 Kelurahan Lakessi – Program Kerja KKN by Dian Eka Putra")
