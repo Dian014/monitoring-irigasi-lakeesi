@@ -11,6 +11,7 @@ import base64
 from datetime import datetime
 import subprocess
 import json
+import os
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -206,12 +207,32 @@ with st.expander("Hitung Manual Prediksi Panen"):
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
 
-# Laporan Warga (disimpan permanen di session_state selama sesi berjalan)
-with st.expander("Laporan Warga"):
-    # Inisialisasi list laporan jika belum ada
-    if "laporan" not in st.session_state:
-        st.session_state.laporan = []
+# Path file untuk simpan data laporan warga dan todo
+LAPORAN_FILE = "laporan_warga.json"
+TODO_FILE = "todo_harian.json"
 
+# Fungsi load data dari file JSON
+def load_data(filename):
+    if os.path.exists(filename):
+        with open(filename, "r", encoding="utf-8") as f:
+            return json.load(f)
+    else:
+        return []
+
+# Fungsi simpan data ke file JSON
+def save_data(filename, data):
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+# Load data saat awal program
+if "laporan" not in st.session_state:
+    st.session_state.laporan = load_data(LAPORAN_FILE)
+
+if "todo" not in st.session_state:
+    st.session_state.todo = load_data(TODO_FILE)
+
+# Bagian Laporan Warga
+with st.expander("Laporan Warga"):
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
         kontak = st.text_input("Kontak")
@@ -222,49 +243,46 @@ with st.expander("Laporan Warga"):
 
         if kirim:
             if nama and kontak and isi:
-                st.session_state.laporan.append({
+                new_laporan = {
                     "Nama": nama,
                     "Kontak": kontak,
                     "Jenis": jenis,
                     "Lokasi": lokasi,
                     "Deskripsi": isi,
                     "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
-                })
+                }
+                st.session_state.laporan.append(new_laporan)
+                save_data(LAPORAN_FILE, st.session_state.laporan)
                 st.success("Laporan terkirim!")
             else:
                 st.error("Mohon isi semua field Nama, Kontak, dan Deskripsi.")
 
-    # Tampilkan daftar laporan yang tersimpan di session_state
-    if st.session_state.laporan:
-        for i, lap in enumerate(st.session_state.laporan):
-            col1, col2 = st.columns([0.9, 0.1])
-            with col1:
-                st.markdown(
-                    f"**{lap['Tanggal']}**  \n"
-                    f"{lap['Jenis']}: {lap['Deskripsi']} oleh *{lap['Nama']}* – Lokasi: {lap['Lokasi']}"
-                )
-            with col2:
-                if st.button("Hapus", key=f"del_lap_{i}"):
-                    st.session_state.laporan.pop(i)
-                    st.experimental_rerun()
+    # Tampilkan laporan dan tombol hapus
+    for i, lap in enumerate(st.session_state.laporan):
+        col1, col2 = st.columns([0.9, 0.1])
+        with col1:
+            st.markdown(f"**{lap['Tanggal']}**  \n{lap['Jenis']}: {lap['Deskripsi']} oleh *{lap['Nama']}* – Lokasi: {lap['Lokasi']}")
+        with col2:
+            if st.button("Hapus", key=f"del_lap_{i}"):
+                st.session_state.laporan.pop(i)
+                save_data(LAPORAN_FILE, st.session_state.laporan)
+                st.experimental_rerun()
 
-# Pengingat Harian (to-do list), simpan di session_state permanen selama sesi
+# Bagian Pengingat Harian (to-do)
 with st.expander("Pengingat Harian"):
-    if "todo" not in st.session_state:
-        st.session_state.todo = []
-
     tugas = st.text_input("Tambah tugas:")
     if tugas and st.button("Simpan", key="btn_simpan_tugas"):
         st.session_state.todo.append(tugas)
-        st.experimental_rerun()  # langsung refresh supaya input bersih
+        save_data(TODO_FILE, st.session_state.todo)
+        st.experimental_rerun()
 
-    if st.session_state.todo:
-        for i, t in enumerate(st.session_state.todo):
-            col1, col2 = st.columns([0.9, 0.1])
-            col1.markdown(f"- {t}")
-            if col2.button("Hapus", key=f"hapus_todo_{i}"):
-                st.session_state.todo.pop(i)
-                st.experimental_rerun()
+    for i, t in enumerate(st.session_state.todo):
+        col1, col2 = st.columns([0.9, 0.1])
+        col1.markdown(f"- {t}")
+        if col2.button("Hapus", key=f"hapus_todo_{i}"):
+            st.session_state.todo.pop(i)
+            save_data(TODO_FILE, st.session_state.todo)
+            st.experimental_rerun()
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
