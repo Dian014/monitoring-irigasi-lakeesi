@@ -243,11 +243,10 @@ with st.expander("📢 Laporan Warga"):
                     "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
                 }
                 st.session_state.laporan.append(new_laporan)
-                save_data(LAPORAN_FILE, st.session_state.laporan)
-                st.success("✅ Laporan berhasil dikirim!")
-                st.experimental_rerun()
-            else:
-                st.error("❗ Mohon lengkapi semua isian.")
+        save_data(LAPORAN_FILE, st.session_state.laporan)
+        st.experimental_rerun()
+    else:
+        st.warning("Lengkapi semua isian sebelum mengirim laporan.")
 
     for i, lap in enumerate(st.session_state.laporan):
         col1, col2 = st.columns([0.9, 0.1])
