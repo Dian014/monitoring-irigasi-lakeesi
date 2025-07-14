@@ -6,16 +6,25 @@ import folium
 from streamlit_folium import st_folium
 from sklearn.linear_model import LinearRegression
 import numpy as np
+import random
+import openai
 
 # ------------------ KONFIGURASI ------------------
 st.set_page_config(
-    page_title="🌾 Dashboard Cerdas Pertanian Lakessi",
+    page_title="🌾 Sistem Pertanian Cerdas Lakessi",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# ------------------ INISIALISASI OPENAI ------------------
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")  # simpan API key di streamlit secrets
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
+else:
+    openai.api_key = None
+
 # ------------------ JUDUL ------------------
-st.title("Dashboard Pertanian Cerdas – Kelurahan Lakessi")
+st.title("🌱 Sistem Pertanian Cerdas – Kelurahan Lakessi")
 st.markdown("""
 📍 *Lokasi: Kelurahan Lakessi, Kecamatan Maritengngae, Sidrap, Sulawesi Selatan*  
 🧑‍💻 *Pengembang: Dian Eka Putra* | 📧 ekaputradian01@gmail.com | 📱 085654073752  
@@ -61,7 +70,12 @@ def highlight_irigasi(row):
     return ['background-color: {}'.format(color)] * len(row)
 
 with st.expander("📋 Data Cuaca dan Status Irigasi Harian"):
-    st.dataframe(df.style.apply(highlight_irigasi, axis=1), use_container_width=True)
+    st.dataframe(df.style.apply(highlight_irigasi, axis=1).format({
+        "Curah Hujan (mm)": "{:.1f}",
+        "Suhu Maks (°C)": "{:.1f}",
+        "Suhu Min (°C)": "{:.1f}",
+        "Kelembapan (%)": "{:.1f}"
+    }), use_container_width=True)
     st.download_button("⬇ Unduh Data CSV", data=df.to_csv(index=False), file_name="cuaca_irigasi_lakessi.csv")
 
 # ------------------ GRAFIK ------------------
@@ -97,77 +111,74 @@ with st.expander("🤖 Prediksi Hasil Panen Otomatis (ML Linear Regression)"):
     prediksi = model.predict(X_now)[0]
     st.metric("📈 Prediksi Panen Saat Ini (kg/ha)", f"{prediksi:,.0f}")
 
-# ------------------ HITUNG PENDAPATAN MANUAL ------------------
-with st.expander("💰 Simulasi Pendapatan Berdasarkan Data Manual"):
-    curah = st.number_input("Curah Hujan (mm)", value=5.0)
-    suhu = st.number_input("Suhu Maks (°C)", value=31.0)
-    kelembaban = st.number_input("Kelembapan (%)", value=80.0)
-    luas = st.number_input("Luas Lahan (ha)", value=1.0)
-    harga = st.number_input("Harga Gabah (Rp/kg)", value=6500)
-    pred_manual = model.predict(np.array([[curah, suhu, kelembaban]]))[0]
-    total_produksi = pred_manual * luas
-    pendapatan = total_produksi * harga
-    st.metric("🌾 Estimasi Panen", f"{pred_manual:,.0f} kg/ha")
-    st.metric("📦 Total Produksi", f"{total_produksi:,.0f} kg")
-    st.success(f"💵 Estimasi Pendapatan: Rp {pendapatan:,.0f}")
+# ------------------ CHATBOT PERTANIAN GPT NYATA ------------------
+with st.expander("🤖 Tanya Jawab AI GPT Nyata: Asisten Pertanian Lakessi"):
+    prompt = st.text_input("Tanya tentang pertanian, pupuk, hama, dll:")
+    if prompt:
+        if openai.api_key is None:
+            st.error("⚠️ API Key OpenAI tidak ditemukan! Simpan API key di secrets dengan key 'OPENAI_API_KEY'")
+        else:
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Kamu adalah asisten pertanian yang membantu dengan info relevan di Kelurahan Lakessi."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=200,
+                    temperature=0.7,
+                )
+                answer = response['choices'][0]['message']['content']
+                st.success(f"🧠 Jawaban AI:\n{answer}")
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat memanggil OpenAI: {e}")
 
-# ------------------ ANALISIS RISIKO HAMA ------------------
-with st.expander("🦠 Prediksi Risiko Serangan Hama & Penyakit"):
-    for _, row in df.iterrows():
-        risiko = []
-        if row["Kelembapan (%)"] > 85 and row["Suhu Maks (°C)"] > 30:
-            risiko.append("⚠️ Potensi tinggi hawar daun bakteri")
-        if row["Curah Hujan (mm)"] > 10 and row["Kelembapan (%)"] > 80:
-            risiko.append("⚠️ Waspadai jamur & blas")
-        if not risiko:
-            risiko.append("✅ Aman")
-        st.markdown(f"{row['Tanggal'].date()}: {'; '.join(risiko)}")
+# ------------------ FORM PELAPORAN WARGA ------------------
+with st.expander("📝 Form Pelaporan Warga Kelurahan Lakessi"):
+    with st.form("laporan_warga_form"):
+        nama = st.text_input("Nama Pelapor")
+        kontak = st.text_input("Kontak (WhatsApp/HP)")
+        jenis_laporan = st.selectbox("Jenis Laporan", ["Masalah Irigasi", "Gangguan Hama", "Kondisi Cuaca", "Lainnya"])
+        deskripsi = st.text_area("Deskripsi Singkat")
+        lokasi = st.text_input("Lokasi (misal: RT/RW, Blok, Jalan)")
+        submit = st.form_submit_button("Kirim Laporan")
 
-# ------------------ REKOMENDASI PEMUPUKAN ------------------
-with st.expander("🧪 Rekomendasi Jadwal & Jenis Pemupukan"):
-    st.markdown("""
-    💡 **Pupuk Dasar (Urea, TSP, KCl):** 7 hari setelah tanam  
-    💡 **Pupuk Susulan I:** 21 HST – cocok saat suhu tinggi & curah rendah  
-    💡 **Pupuk Susulan II:** 35–40 HST – sesuaikan kelembapan tanah  
-    """)
+        if submit:
+            if not nama or not kontak or not deskripsi:
+                st.warning("Mohon isi semua kolom wajib: Nama, Kontak, dan Deskripsi.")
+            else:
+                if "laporan_list" not in st.session_state:
+                    st.session_state.laporan_list = []
+                laporan_baru = {
+                    "Nama": nama,
+                    "Kontak": kontak,
+                    "Jenis Laporan": jenis_laporan,
+                    "Deskripsi": deskripsi,
+                    "Lokasi": lokasi,
+                    "Status": "Baru"
+                }
+                st.session_state.laporan_list.append(laporan_baru)
+                st.success("✅ Laporan berhasil dikirim! Terima kasih atas partisipasi Anda.")
 
-# ------------------ CEK KONDISI TANAMAN ------------------
-with st.expander("🌿 Diagnosa Kesehatan Tanaman Manual"):
-    warna = st.selectbox("🟢 Warna Daun", ["Hijau segar", "Kuning pucat", "Coklat", "Bercak putih"])
-    tinggi = st.number_input("📏 Tinggi Tanaman (cm)", value=50)
-    gejala = st.text_area("🩺 Gejala Lain (Opsional)")
+    if "laporan_list" in st.session_state and st.session_state.laporan_list:
+        st.markdown("### Daftar Laporan Warga:")
+        for i, lap in enumerate(st.session_state.laporan_list):
+            st.markdown(f"**{i+1}. {lap['Jenis Laporan']}** - {lap['Deskripsi']} (oleh {lap['Nama']}, {lap['Kontak']}) - Lokasi: {lap['Lokasi']} - Status: {lap['Status']}")
 
-    if warna != "Hijau segar":
-        st.warning("⚠️ Daun tidak sehat. Periksa unsur hara & hama.")
-    elif tinggi < 30:
-        st.info("ℹ️ Pertumbuhan lambat. Evaluasi irigasi & pupuk.")
-    else:
-        st.success("✅ Tanaman sehat.")
-
-# ------------------ TIPS PERTANIAN HARIAN ------------------
-with st.expander("🧠 Tips Harian Otomatis Berdasarkan Cuaca"):
-    for _, row in df.iterrows():
-        tips = []
-        if row["Curah Hujan (mm)"] < threshold:
-            tips.append("Periksa kelembaban tanah")
-        if row["Suhu Maks (°C)"] > 33:
-            tips.append("Waspadai stres panas pada tanaman")
-        if row["Kelembapan (%)"] > 85:
-            tips.append("Waspadai jamur dan bakteri")
-        if not tips:
-            tips.append("Cuaca ideal untuk pertumbuhan")
-        st.markdown(f"📅 {row['Tanggal'].date()}: {'; '.join(tips)}")
-
-# ------------------ PENGINGAT TUGAS PETANI ------------------
+# ------------------ PENGINGAT TUGAS ------------------
 with st.expander("📆 Pengingat Aktivitas Harian"):
     task = st.text_input("➕ Tambahkan Tugas:")
     if "task_list" not in st.session_state:
         st.session_state.task_list = []
-    if st.button("Simpan"):
-        if task:
-            st.session_state.task_list.append(task)
-    for t in st.session_state.task_list:
-        st.markdown(f"- ✅ {t}")
+    if task and st.button("Simpan"):
+        st.session_state.task_list.append(task)
+    if st.session_state.task_list:
+        for i, t in enumerate(st.session_state.task_list):
+            col1, col2 = st.columns([0.9, 0.1])
+            col1.markdown(f"- ✅ {t}")
+            if col2.button("❌", key=f"hapus_{i}"):
+                st.session_state.task_list.pop(i)
+                st.experimental_rerun()
 
 # ------------------ HARGA PASAR ------------------
 with st.expander("💹 Harga Pasar Komoditas (Dummy)"):
