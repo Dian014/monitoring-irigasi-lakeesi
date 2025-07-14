@@ -68,26 +68,31 @@ df_harian["Rekomendasi Irigasi"] = df_harian["Curah Hujan (mm)"].apply(
 )
 
 # ------------------ TAMPILKAN TABEL DATA ------------------
-with st.expander("📊 Tabel Data Cuaca Harian"):
+with st.expander("Tabel Data Cuaca Harian"):
     st.dataframe(df_harian, use_container_width=True)
 
     # Export CSV
     csv = df_harian.to_csv(index=False).encode("utf-8")
-    st.download_button("📥 Download CSV", csv, "data_cuaca_harian.csv", "text/csv")
+    st.download_button("Download CSV", csv, "data_cuaca_harian.csv", "text/csv")
 
-    # Export Excel (pakai xlsxwriter)
+        # Export Excel (pakai xlsxwriter)
     excel_io = BytesIO()
-    with pd.ExcelWriter(excel_io, engine='openpyxl') as writer:
+    with pd.ExcelWriter(excel_io, engine='xlsxwriter') as writer:
         df_harian.to_excel(writer, index=False, sheet_name="Cuaca Harian")
-        
+        workbook  = writer.book
+        worksheet = writer.sheets["Cuaca Harian"]
+        # Set lebar kolom tanggal dan format tanggal
+        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
+        worksheet.set_column('A:A', 15, date_format)
     excel_io.seek(0)
-    st.download_button("📥 Download Excel", data=excel_io.read(), file_name="data_cuaca_harian.xlsx")
+    st.download_button("Download Excel", data=excel_io.read(), file_name="data_cuaca_harian.xlsx")
 
-    # Export PDF (sederhana via HTML -> base64)
+    # Export PDF (ubah jadi download file HTML saja agar tidak error)
     pdf_html = df_harian.to_html(index=False)
     b64 = base64.b64encode(pdf_html.encode("utf-8")).decode("utf-8")
-    href = f'<a href="data:application/pdf;base64,{b64}" download="laporan_cuaca_harian.pdf">📥 Download PDF (HTML Preview)</a>'
+    href = f'<a href="data:text/html;base64,{b64}" download="laporan_cuaca_harian.html">📥 Download Laporan (HTML)</a>'
     st.markdown(href, unsafe_allow_html=True)
+
 
 # ------------------ DATAFRAME PER JAM ------------------
 df_jam = pd.DataFrame({
@@ -153,7 +158,7 @@ with st.expander("Prediksi Panen Otomatis"):
 
 # Tanya Jawab Pertanian Manual
 st.markdown("---")
-st.title("Tanya Jawab Pertanian (Manual)")
+st.title("Tanya Jawab Pertanian")
 
 faq_dict = {
     "Apa solusi hama wereng pada padi?": "Gunakan insektisida berbahan aktif imidakloprid secara teratur dan pantau populasi hama secara berkala.",
