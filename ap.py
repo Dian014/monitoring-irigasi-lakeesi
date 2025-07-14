@@ -77,8 +77,9 @@ with st.expander("📊 Tabel Data Cuaca Harian"):
 
     # Export Excel
     excel_io = BytesIO()
-    df_harian.to_excel(excel_io, index=False, sheet_name="Cuaca Harian")
-    st.download_button("📥 Download Excel", data=excel_io.getvalue(), file_name="data_cuaca_harian.xlsx")
+    df_harian.to_excel(excel_io, index=False, sheet_name="Cuaca Harian", engine="openpyxl")
+    excel_io.seek(0)  # wajib sebelum dibaca kembali
+    st.download_button("📥 Download Excel", data=excel_io.read(), file_name="data_cuaca_harian.xlsx")
 
     # Export PDF (sederhana via HTML -> base64)
     pdf_html = df_harian.to_html(index=False)
