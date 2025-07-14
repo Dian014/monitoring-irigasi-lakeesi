@@ -336,7 +336,10 @@ with st.expander("Pengingat Harian (To-Do List)"):
 if st.session_state.laporan_update or st.session_state.todo_update:
     st.session_state.laporan_update = False
     st.session_state.todo_update = False
-    st.experimental_rerun()
+    try:
+        st.experimental_rerun()
+    except Exception as e:
+        st.error(f"Terjadi error saat reload: {e}")
 
 # Footer
 st.markdown("---")
