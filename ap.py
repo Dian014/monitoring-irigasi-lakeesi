@@ -11,7 +11,6 @@ import base64
 from datetime import datetime
 import subprocess
 import json
-import xlsxwriter
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
