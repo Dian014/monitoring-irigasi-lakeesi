@@ -99,17 +99,17 @@ with st.expander("Grafik Harian"):
         use_container_width=True
     )
 
-with st.expander("Grafik Per Jam (48 Jam Terakhir)"):
+with st.expander("Grafik Per Jam (48 Jam Ke Depan)"):
     st.plotly_chart(
-        px.line(df_jam.tail(48), x="Waktu", y="Curah Hujan (mm)", title="Curah Hujan per Jam"),
+        px.line(df_jam.head(48), x="Waktu", y="Curah Hujan (mm)", title="Prediksi Curah Hujan per Jam (48 Jam Ke Depan)"),
         use_container_width=True
     )
     st.plotly_chart(
-        px.line(df_jam.tail(48), x="Waktu", y="Suhu (°C)", title="Suhu per Jam"),
+        px.line(df_jam.head(48), x="Waktu", y="Suhu (°C)", title="Prediksi Suhu per Jam (48 Jam Ke Depan)"),
         use_container_width=True
     )
     st.plotly_chart(
-        px.line(df_jam.tail(48), x="Waktu", y="Kelembapan (%)", title="Kelembapan per Jam"),
+        px.line(df_jam.head(48), x="Waktu", y="Kelembapan (%)", title="Prediksi Kelembapan per Jam (48 Jam Ke Depan)"),
         use_container_width=True
     )
 
@@ -149,29 +149,23 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
 
 # ------------------ TANYA JAWAB PERTANIAN OTOMATIS ------------------
-with st.expander("Tanya Jawab Pertanian (AI)"):
-    pertanyaan = st.text_input("Masukkan pertanyaan Anda tentang pertanian:")
-    if pertanyaan and OPENAI_API_KEY:
-        with st.spinner("Mencari jawaban..."):
-            try:
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",
-                    messages=[
-                        {"role": "system", "content": "Kamu adalah asisten ahli pertanian yang membantu petani dengan jawaban yang jelas dan tepat."},
-                        {"role": "user", "content": pertanyaan}
-                    ],
-                    max_tokens=200,
-                    temperature=0.7
-                )
-                jawaban = response.choices[0].message.content.strip()
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "Kamu adalah asisten ahli pertanian yang membantu petani dengan jawaban yang jelas dan tepat."},
+        {"role": "user", "content": pertanyaan}
+    ],
+    max_tokens=200,
+    temperature=0.7
+)
+jawaban = response.choices[0].message.content.strip()
                 st.success("Jawaban AI:")
                 st.write(jawaban)
             except Exception as e:
                 st.error(f"Gagal mengambil jawaban dari AI: {e}")
     elif pertanyaan:
         st.warning("API Key OpenAI tidak tersedia, tidak bisa menjawab otomatis.")
-
-# ------------------ BAGIAN LAIN (Manual, laporan warga, to-do, harga komoditas, footer) ------------------
 
 # Perhitungan manual prediksi panen
 with st.expander("Hitung Manual Prediksi Panen"):
@@ -234,6 +228,20 @@ with st.expander("Harga Komoditas"):
         "Komoditas": ["Gabah Kering", "Jagung", "Beras Medium"],
         "Harga (Rp/kg)": [6500, 5300, 10500]
     }))
+
+# ------------------ TIPS PERTANIAN ------------------
+with st.expander("🧠 Tips Pertanian Harian Otomatis"):
+    for _, row in df.iterrows():
+        tips = []
+        if row["Curah Hujan (mm)"] < threshold:
+            tips.append("Lakukan irigasi untuk menjaga kelembaban tanah")
+        if row["Suhu Maks (°C)"] > 33:
+            tips.append("Waspadai stres panas pada padi")
+        if row["Kelembapan (%)"] > 85:
+            tips.append("Tingkatkan kewaspadaan terhadap penyakit jamur")
+        if not tips:
+            tips.append("Kondisi ideal untuk pertumbuhan padi")
+        st.markdown(f" {row['Tanggal'].date()}: {'; '.join(tips)}")
 
 # Footer
 st.markdown("---")
