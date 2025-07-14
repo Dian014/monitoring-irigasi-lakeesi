@@ -16,8 +16,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ------------------ INPUT KOORDINAT DINAMIS ------------------
+LAT = st.sidebar.number_input("Latitude", value=-3.947760, format="%.6f")
+LON = st.sidebar.number_input("Longitude", value=119.810237, format="%.6f")
+
 # ------------------ INISIALISASI OPENAI ------------------
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")  # simpan API key di streamlit secrets
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")  # simpan API key di Streamlit secrets
 if OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
 else:
@@ -30,9 +34,6 @@ st.markdown("""
 🧑‍💻 *Pengembang: Dian Eka Putra* | 📧 ekaputradian01@gmail.com | 📱 085654073752  
 """)
 
-# ------------------ KOORDINAT ------------------
-LAT, LON = -3.947760, 119.810237
-
 # ------------------ PETA CURAH HUJAN ------------------
 with st.expander("🌧️ Peta Curah Hujan Real-time (OpenWeatherMap)"):
     m = folium.Map(location=[LAT, LON], zoom_start=13, control_scale=True)
@@ -40,7 +41,7 @@ with st.expander("🌧️ Peta Curah Hujan Real-time (OpenWeatherMap)"):
     if OWM_API_KEY:
         tile_url = f"https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid={OWM_API_KEY}"
         folium.TileLayer(tiles=tile_url, attr="© OpenWeatherMap", name="Curah Hujan", overlay=True, control=True, opacity=0.6).add_to(m)
-        folium.Marker([LAT, LON], tooltip="📍 Kelurahan Lakessi").add_to(m)
+        folium.Marker([LAT, LON], tooltip="📍 Lokasi Terpilih").add_to(m)
     st_folium(m, width="100%", height=400)
 
 # ------------------ DATA CUACA ------------------
@@ -111,15 +112,15 @@ with st.expander("🤖 Prediksi Hasil Panen Otomatis (ML Linear Regression)"):
     prediksi = model.predict(X_now)[0]
     st.metric("📈 Prediksi Panen Saat Ini (kg/ha)", f"{prediksi:,.0f}")
 
-# ------------------ CHATBOT PERTANIAN GPT NYATA ------------------
+# ------------------ CHATBOT PERTANIAN GPT NYATA (OpenAI >= 1.0.0) ------------------
 with st.expander("🤖 Tanya Jawab AI GPT Nyata: Asisten Pertanian Lakessi"):
     prompt = st.text_input("Tanya tentang pertanian, pupuk, hama, dll:")
     if prompt:
-        if openai.api_key is None:
+        if not openai.api_key:
             st.error("⚠️ API Key OpenAI tidak ditemukan! Simpan API key di secrets dengan key 'OPENAI_API_KEY'")
         else:
             try:
-                response = openai.ChatCompletion.create(
+                response = openai.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "Kamu adalah asisten pertanian yang membantu dengan info relevan di Kelurahan Lakessi."},
@@ -128,7 +129,7 @@ with st.expander("🤖 Tanya Jawab AI GPT Nyata: Asisten Pertanian Lakessi"):
                     max_tokens=200,
                     temperature=0.7,
                 )
-                answer = response['choices'][0]['message']['content']
+                answer = response.choices[0].message.content
                 st.success(f"🧠 Jawaban AI:\n{answer}")
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memanggil OpenAI: {e}")
