@@ -175,16 +175,14 @@ with st.expander("Prediksi Panen"):
     st.markdown("### Hasil Prediksi Panen Otomatis")
     st.metric("Prediksi Panen (kg/ha)", f"{pred_auto:,.0f}")
     st.success(f"Total: {total_auto:,.0f} kg | Rp {pendapatan_auto:,.0f}")
+   
+    # Proyeksi panen 2 kali setahun
+    total_panen_tahunan = total_auto * 2
+    pendapatan_tahunan = total_panen_tahunan * harga_auto
 
-    # Proyeksi panen jangka panjang (otomatis)
-    pred_mingguan = pred_auto * 7 * luas_auto
-    pred_bulanan = pred_auto * 30 * luas_auto
-    pendapatan_mingguan = pred_mingguan * harga_auto
-    pendapatan_bulanan = pred_bulanan * harga_auto
-
-    st.write("### Proyeksi Panen Otomatis Lebih Panjang:")
-    st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
-    st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
+    st.write("### Proyeksi Panen Otomatis Tahunan (2 Kali Panen):")
+    st.write(f"- Total Panen Tahunan: {total_panen_tahunan:,.0f} kg")
+    st.write(f"- Perkiraan Pendapatan Tahunan: Rp {pendapatan_tahunan:,.0f}")
 
 # Tanya Jawab Pertanian Manual
 st.markdown("---")
