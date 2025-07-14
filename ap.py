@@ -232,26 +232,32 @@ with st.expander("📢 Laporan Warga"):
         isi = st.text_area("Deskripsi")
         kirim = st.form_submit_button("Kirim")
 
-if kirim:
-    if nama and kontak and isi:
-        new_laporan = {
-            "Nama": nama,
-            "Kontak": kontak,
-            "Jenis": jenis,
-            "Lokasi": lokasi,
-            "Deskripsi": isi,
-            "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
-        }
-        st.session_state.laporan.append(new_laporan)
-        save_data(LAPORAN_FILE, st.session_state.laporan)
-        st.experimental_rerun()
-    else:
-        st.warning("Lengkapi semua isian sebelum mengirim laporan.")
+        if kirim:
+            if nama and kontak and isi:
+                new_laporan = {
+                    "Nama": nama,
+                    "Kontak": kontak,
+                    "Jenis": jenis,
+                    "Lokasi": lokasi,
+                    "Deskripsi": isi,
+                    "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
+                }
+                st.session_state.laporan.append(new_laporan)
+                save_data(LAPORAN_FILE, st.session_state.laporan)
+                st.experimental_rerun()
+            else:
+                st.warning("Lengkapi semua isian sebelum mengirim laporan.")
 
+    # Tampilkan laporan warga (di luar form)
     for i, lap in enumerate(st.session_state.laporan):
         col1, col2 = st.columns([0.9, 0.1])
         with col1:
-            st.markdown(f"🗓️ **{lap['Tanggal']}**  \n🔎 *{lap['Jenis']}* oleh **{lap['Nama']}**  \n📍 {lap['Lokasi']}  \n📝 {lap['Deskripsi']}")
+            st.markdown(
+                f"🗓️ **{lap['Tanggal']}**  \n"
+                f"🔎 *{lap['Jenis']}* oleh **{lap['Nama']}**  \n"
+                f"📍 {lap['Lokasi']}  \n"
+                f"📝 {lap['Deskripsi']}"
+            )
         with col2:
             if st.button("🗑️ Hapus", key=f"del_lap_{i}"):
                 st.session_state.laporan.pop(i)
