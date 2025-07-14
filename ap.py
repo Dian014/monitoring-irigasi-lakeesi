@@ -77,8 +77,8 @@ with st.expander("📊 Tabel Data Cuaca Harian"):
 
     # Export Excel (pakai xlsxwriter)
     excel_io = BytesIO()
-    with pd.ExcelWriter(excel_io, engine='xlsxwriter') as writer:
-        df_harian.to_excel(writer, index=False, sheet_name="Cuaca Harian")
+    with pd.ExcelWriter(excel_io, engine='openpyxl') as writer:
+    df_harian.to_excel(writer, index=False, sheet_name="Cuaca Harian")
     excel_io.seek(0)
     st.download_button("📥 Download Excel", data=excel_io.read(), file_name="data_cuaca_harian.xlsx")
 
