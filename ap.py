@@ -207,13 +207,17 @@ with st.expander("Hitung Manual Prediksi Panen"):
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
               
+
 # ------------------ LAPORAN WARGA ------------------
 LAPORAN_FILE = "laporan_warga.json"
 
 def load_data(filename):
     if os.path.exists(filename):
         with open(filename, "r", encoding="utf-8") as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []
     return []
 
 def save_data(filename, data):
@@ -232,24 +236,23 @@ with st.expander("📢 Laporan Warga"):
         isi = st.text_area("Deskripsi")
         kirim = st.form_submit_button("Kirim")
 
-if kirim:
-    if nama and kontak and isi:
-        new_laporan = {
-            "Nama": nama,
-            "Kontak": kontak,
-            "Jenis": jenis,
-            "Lokasi": lokasi,
-            "Deskripsi": isi,
-            "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
-        }
-        st.session_state.laporan.append(new_laporan)
-        save_data(LAPORAN_FILE, st.session_state.laporan)
-        # st.experimental_rerun()  <-- komen dulu ini
-        st.success("Laporan berhasil dikirim.")
-    else:
-        st.warning("Lengkapi semua isian sebelum mengirim laporan.")
+        if kirim:
+            if nama.strip() and kontak.strip() and isi.strip():
+                new_laporan = {
+                    "Nama": nama.strip(),
+                    "Kontak": kontak.strip(),
+                    "Jenis": jenis,
+                    "Lokasi": lokasi.strip(),
+                    "Deskripsi": isi.strip(),
+                    "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
+                }
+                st.session_state.laporan.append(new_laporan)
+                save_data(LAPORAN_FILE, st.session_state.laporan)
+                st.success("Laporan berhasil dikirim.")
+            else:
+                st.warning("Lengkapi semua isian sebelum mengirim laporan.")
 
-    # Tampilkan laporan warga (di luar form)
+    # Tampilkan laporan warga (di luar form submit)
     for i, lap in enumerate(st.session_state.laporan):
         col1, col2 = st.columns([0.9, 0.1])
         with col1:
@@ -271,7 +274,10 @@ TODO_FILE = "todo_harian.json"
 def load_todo():
     if os.path.exists(TODO_FILE):
         with open(TODO_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []
     return []
 
 def save_todo(data):
@@ -298,6 +304,7 @@ with st.expander("📝 Pengingat Harian (To-Do List)"):
             st.session_state.todo.pop(i)
             save_todo(st.session_state.todo)
             st.experimental_rerun()
+
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
