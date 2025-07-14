@@ -233,16 +233,16 @@ with st.expander("📢 Laporan Warga"):
         kirim = st.form_submit_button("Kirim")
 
         if kirim:
-            if nama and kontak and isi:
-                new_laporan = {
-                    "Nama": nama,
-                    "Kontak": kontak,
-                    "Jenis": jenis,
-                    "Lokasi": lokasi,
-                    "Deskripsi": isi,
-                    "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
-                }
-                st.session_state.laporan.append(new_laporan)
+    if nama and kontak and isi:
+        new_laporan = {
+            "Nama": nama,
+            "Kontak": kontak,
+            "Jenis": jenis,
+            "Lokasi": lokasi,
+            "Deskripsi": isi,
+            "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
+        }
+        st.session_state.laporan.append(new_laporan)
         save_data(LAPORAN_FILE, st.session_state.laporan)
         st.experimental_rerun()
     else:
