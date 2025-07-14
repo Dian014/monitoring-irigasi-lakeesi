@@ -67,6 +67,25 @@ df_harian["Rekomendasi Irigasi"] = df_harian["Curah Hujan (mm)"].apply(
     lambda x: "Irigasi Diperlukan" if x < threshold else "Cukup"
 )
 
+# ------------------ TAMPILKAN TABEL DATA ------------------
+with st.expander("📊 Tabel Data Cuaca Harian"):
+    st.dataframe(df_harian, use_container_width=True)
+
+    # Export CSV
+    csv = df_harian.to_csv(index=False).encode("utf-8")
+    st.download_button("📥 Download CSV", csv, "data_cuaca_harian.csv", "text/csv")
+
+    # Export Excel
+    excel_io = BytesIO()
+    df_harian.to_excel(excel_io, index=False, sheet_name="Cuaca Harian")
+    st.download_button("📥 Download Excel", data=excel_io.getvalue(), file_name="data_cuaca_harian.xlsx")
+
+    # Export PDF (sederhana via HTML -> base64)
+    pdf_html = df_harian.to_html(index=False)
+    b64 = base64.b64encode(pdf_html.encode("utf-8")).decode("utf-8")
+    href = f'<a href="data:application/pdf;base64,{b64}" download="laporan_cuaca_harian.pdf">📥 Download PDF (HTML Preview)</a>'
+    st.markdown(href, unsafe_allow_html=True)
+
 # ------------------ DATAFRAME PER JAM ------------------
 df_jam = pd.DataFrame({
     "Waktu": pd.to_datetime(data["hourly"]["time"]),
@@ -84,8 +103,8 @@ with st.expander("Grafik Harian"):
 
 from datetime import datetime as dt
 
+# ------------------ GRAFIK JAM KE DEPAN ------------------
 df_jam_prediksi = df_jam[df_jam["Waktu"] > dt.now()].head(48)
-
 with st.expander("Grafik Per Jam (48 Jam Ke Depan)"):
     if df_jam_prediksi.empty:
         st.warning("Tidak ada data prediksi ke depan tersedia saat ini.")
@@ -131,7 +150,7 @@ with st.expander("Prediksi Panen Otomatis"):
 
 # Tanya Jawab Pertanian Manual
 st.markdown("---")
-st.title("💬 Tanya Jawab Pertanian (Manual)")
+st.title("Tanya Jawab Pertanian (Manual)")
 
 faq_dict = {
     "Apa solusi hama wereng pada padi?": "Gunakan insektisida berbahan aktif imidakloprid secara teratur dan pantau populasi hama secara berkala.",
@@ -149,7 +168,7 @@ if st.button("Jawab Pertanyaan"):
     st.write(jawaban)
 
 # Fitur Tambahan: Kalkulator Pupuk
-with st.expander("📦 Kalkulator Pemupukan Dasar"):
+with st.expander("Kalkulator Pemupukan Dasar"):
     tanaman = st.selectbox("Jenis Tanaman", ["Padi", "Jagung", "Kedelai"])
     luas_lahan = st.number_input("Luas Lahan (ha)", value=1.0, key="pupuk_luas")
 
