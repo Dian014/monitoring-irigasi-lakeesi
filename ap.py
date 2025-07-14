@@ -206,7 +206,12 @@ with st.expander("Hitung Manual Prediksi Panen"):
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
     st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
 
+# Laporan Warga (disimpan permanen di session_state selama sesi berjalan)
 with st.expander("Laporan Warga"):
+    # Inisialisasi list laporan jika belum ada
+    if "laporan" not in st.session_state:
+        st.session_state.laporan = []
+
     with st.form("form_laporan"):
         nama = st.text_input("Nama")
         kontak = st.text_input("Kontak")
@@ -215,25 +220,27 @@ with st.expander("Laporan Warga"):
         isi = st.text_area("Deskripsi")
         kirim = st.form_submit_button("Kirim")
 
-        if kirim and nama and kontak and isi:
-            if "laporan" not in st.session_state:
-                st.session_state.laporan = []
-            st.session_state.laporan.append({
-                "Nama": nama,
-                "Kontak": kontak,
-                "Jenis": jenis,
-                "Lokasi": lokasi,
-                "Deskripsi": isi,
-                "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
-            })
-            st.success("Laporan terkirim!")
+        if kirim:
+            if nama and kontak and isi:
+                st.session_state.laporan.append({
+                    "Nama": nama,
+                    "Kontak": kontak,
+                    "Jenis": jenis,
+                    "Lokasi": lokasi,
+                    "Deskripsi": isi,
+                    "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
+                })
+                st.success("Laporan terkirim!")
+            else:
+                st.error("Mohon isi semua field Nama, Kontak, dan Deskripsi.")
 
-    if "laporan" in st.session_state:
+    # Tampilkan daftar laporan yang tersimpan di session_state
+    if st.session_state.laporan:
         for i, lap in enumerate(st.session_state.laporan):
             col1, col2 = st.columns([0.9, 0.1])
             with col1:
                 st.markdown(
-                    f"{lap['Tanggal']}**  \n"
+                    f"**{lap['Tanggal']}**  \n"
                     f"{lap['Jenis']}: {lap['Deskripsi']} oleh *{lap['Nama']}* – Lokasi: {lap['Lokasi']}"
                 )
             with col2:
@@ -241,19 +248,23 @@ with st.expander("Laporan Warga"):
                     st.session_state.laporan.pop(i)
                     st.experimental_rerun()
 
-# Pengingat harian (to-do)
+# Pengingat Harian (to-do list), simpan di session_state permanen selama sesi
 with st.expander("Pengingat Harian"):
-    tugas = st.text_input("Tambah tugas:")
     if "todo" not in st.session_state:
         st.session_state.todo = []
+
+    tugas = st.text_input("Tambah tugas:")
     if tugas and st.button("Simpan", key="btn_simpan_tugas"):
         st.session_state.todo.append(tugas)
-    for i, t in enumerate(st.session_state.todo):
-        col1, col2 = st.columns([0.9, 0.1])
-        col1.markdown(f"- {t}")
-        if col2.button("Hapus", key=f"hapus_todo_{i}"):
-            st.session_state.todo.pop(i)
-            st.experimental_rerun()
+        st.experimental_rerun()  # langsung refresh supaya input bersih
+
+    if st.session_state.todo:
+        for i, t in enumerate(st.session_state.todo):
+            col1, col2 = st.columns([0.9, 0.1])
+            col1.markdown(f"- {t}")
+            if col2.button("Hapus", key=f"hapus_todo_{i}"):
+                st.session_state.todo.pop(i)
+                st.experimental_rerun()
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
