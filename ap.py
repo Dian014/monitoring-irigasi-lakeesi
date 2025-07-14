@@ -241,7 +241,7 @@ with st.expander("Harga Komoditas"):
     }))
 
 # ------------------ TIPS PERTANIAN ------------------
-with st.expander("🧠 Tips Pertanian Harian Otomatis"):
+with st.expander("Tips Pertanian Harian Otomatis"):
     for _, row in df_harian.iterrows():
         tips = []
         if row["Curah Hujan (mm)"] < threshold:
