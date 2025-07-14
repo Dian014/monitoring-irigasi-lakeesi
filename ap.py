@@ -205,7 +205,7 @@ with st.expander("Hitung Manual Prediksi Panen"):
     pendapatan_manual = total_manual * harga
 
     st.metric("Prediksi Panen Manual (kg/ha)", f"{pred_manual:,.0f}")
-    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}"
+    st.success(f"Total: {total_manual:,.0f} kg | Rp {pendapatan_manual:,.0f}")
               
 # ------------------ LAPORAN WARGA ------------------
 LAPORAN_FILE = "laporan_warga.json"
