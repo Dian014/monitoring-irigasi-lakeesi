@@ -268,21 +268,39 @@ with st.expander("Laporan Warga"):
                 save_data(LAPORAN_FILE, st.session_state.laporan)
                 st.experimental_rerun()
 
-# Bagian Pengingat Harian (to-do)
-with st.expander("Pengingat Harian"):
-    tugas = st.text_input("Tambah tugas:")
-    if tugas and st.button("Simpan", key="btn_simpan_tugas"):
-        st.session_state.todo.append(tugas)
-        save_data(TODO_FILE, st.session_state.todo)
-        st.experimental_rerun()
+TODO_FILE = "todo_harian.json"
 
-    for i, t in enumerate(st.session_state.todo):
+def load_todo():
+    if os.path.exists(TODO_FILE):
+        with open(TODO_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def save_todo(data):
+    with open(TODO_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+if "todo" not in st.session_state:
+    st.session_state.todo = load_todo()
+
+with st.expander("Pengingat Harian"):
+    tugas_baru = st.text_input("Tambah tugas:")
+    if st.button("Simpan", key="btn_simpan_tugas"):
+        if tugas_baru.strip() != "":
+            st.session_state.todo.append(tugas_baru.strip())
+            save_todo(st.session_state.todo)
+            st.experimental_rerun()  # rerun hanya di sini, setelah append dan save
+        else:
+            st.warning("Tugas tidak boleh kosong!")
+
+    # Tampilkan daftar tugas dengan tombol hapus
+    for i, tugas in enumerate(st.session_state.todo):
         col1, col2 = st.columns([0.9, 0.1])
-        col1.markdown(f"- {t}")
+        col1.markdown(f"- {tugas}")
         if col2.button("Hapus", key=f"hapus_todo_{i}"):
             st.session_state.todo.pop(i)
-            save_data(TODO_FILE, st.session_state.todo)
-            st.experimental_rerun()
+            save_todo(st.session_state.todo)
+            st.experimental_rerun()  # rerun juga hanya di sini setelah hapus
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
