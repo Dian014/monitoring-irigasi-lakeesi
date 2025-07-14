@@ -232,7 +232,7 @@ with st.expander("📢 Laporan Warga"):
         isi = st.text_area("Deskripsi")
         kirim = st.form_submit_button("Kirim")
 
-        if kirim:
+if kirim:
     if nama and kontak and isi:
         new_laporan = {
             "Nama": nama,
