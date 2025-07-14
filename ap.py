@@ -149,23 +149,28 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
 
 # ------------------ TANYA JAWAB PERTANIAN OTOMATIS ------------------
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[
-        {"role": "system", "content": "Kamu adalah asisten ahli pertanian yang membantu petani dengan jawaban yang jelas dan tepat."},
-        {"role": "user", "content": pertanyaan}
-    ],
-    max_tokens=200,
-    temperature=0.7
-)
-jawaban = response.choices[0].message.content.strip()
+with st.expander("Tanya Jawab Pertanian Otomatis (AI)"):
+    pertanyaan = st.text_input("Masukkan pertanyaan Anda:")
+    if pertanyaan:
+        if OPENAI_API_KEY:
+            try:
+                client = openai.OpenAI(api_key=OPENAI_API_KEY)
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "Kamu adalah asisten ahli pertanian yang membantu petani dengan jawaban yang jelas dan tepat."},
+                        {"role": "user", "content": pertanyaan}
+                    ],
+                    max_tokens=200,
+                    temperature=0.7
+                )
+                jawaban = response.choices[0].message.content.strip()
                 st.success("Jawaban AI:")
                 st.write(jawaban)
             except Exception as e:
                 st.error(f"Gagal mengambil jawaban dari AI: {e}")
-    elif pertanyaan:
-        st.warning("API Key OpenAI tidak tersedia, tidak bisa menjawab otomatis.")
+        else:
+            st.warning("API Key OpenAI tidak tersedia, tidak bisa menjawab otomatis.")
 
 # Perhitungan manual prediksi panen
 with st.expander("Hitung Manual Prediksi Panen"):
@@ -231,7 +236,7 @@ with st.expander("Harga Komoditas"):
 
 # ------------------ TIPS PERTANIAN ------------------
 with st.expander("🧠 Tips Pertanian Harian Otomatis"):
-    for _, row in df.iterrows():
+    for _, row in df_harian.iterrows():
         tips = []
         if row["Curah Hujan (mm)"] < threshold:
             tips.append("Lakukan irigasi untuk menjaga kelembaban tanah")
