@@ -153,43 +153,21 @@ with st.expander("Prediksi Panen Otomatis"):
     st.write("### Proyeksi Panen Lebih Panjang:")
     st.write(f"- Mingguan: {pred_mingguan:,.0f} kg | Rp {pendapatan_mingguan:,.0f}")
     st.write(f"- Bulanan: {pred_bulanan:,.0f} kg | Rp {pendapatan_bulanan:,.0f}")
-
-with st.expander("Tanya Jawab Pertanian (Manual)"):
+    
+    with st.expander("Tanya Jawab Pertanian (Manual)"):
     st.markdown("### ❓ Tulis pertanyaan Anda tentang pertanian:")
     pertanyaan = st.text_area("Contoh: Bagaimana cara mengatasi wereng pada padi?")
     if pertanyaan:
-        st.info("Anda bisa membawa pertanyaan ini ke penyuluh pertanian atau gunakan aplikasi di bawah ini untuk bantuan.")
+        st.info("Silakan konsultasi dengan penyuluh pertanian atau gunakan aplikasi berikut:")
 
-    st.markdown("### 📲 Aplikasi Pendukung Petani:")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("#### 🌱 [SIPINDO by PT East West Seed](https://play.google.com/store/apps/details?id=id.co.ewindo.sipindo)")
-        st.image("https://play-lh.googleusercontent.com/1IvMIarGNhKqUO7mn3CojEO4W4L4gNKOtZVXbc6MJeNeKpv2-ysMi1ZAZc1e7sNcI0c=w240-h480", width=100)
-        st.markdown("*Informasi cuaca, hama, jadwal tanam.*")
-
-        st.markdown("#### 🌾 [AgriON - Platform Petani](https://play.google.com/store/apps/details?id=id.agron)")
-        st.image("https://play-lh.googleusercontent.com/x0FwZKHX-JH2FJ96kTyZMIU7YI_dvdS4vDbkDHsFlGEh7AwVG9Uv4pRBKZxTzNcT0A=w240-h480", width=100)
-        st.markdown("*Komunitas petani dan prediksi pertanian.*")
-
-        st.markdown("#### 📊 [TaniHub](https://play.google.com/store/apps/details?id=com.tanihub.mobile)")
-        st.image("https://play-lh.googleusercontent.com/0FHLrgVw7uN1q3RwVmwEP7zTqZMi_kF8vJhhkOOUzayf_dJ8ELx_0-EqkROqfXGfZQc=w240-h480", width=100)
-        st.markdown("*Jual hasil tani langsung ke konsumen.*")
-
-    with col2:
-        st.markdown("#### 🌾 [Petani (by Kementan RI)](https://play.google.com/store/apps/details?id=id.co.ptpn.petanirakyat)")
-        st.image("https://play-lh.googleusercontent.com/eqIvAeFZKacM07AeVDCMQN0iVE9Q6FgOEBr1Bb9cMQEQWg7vLCjJh8mbUX9qJ2ffVA=w240-h480", width=100)
-        st.markdown("*Layanan pemerintah dan registrasi petani.*")
-
-        st.markdown("#### 🧠 [Agriaku](https://play.google.com/store/apps/details?id=com.agriaku.app)")
-        st.image("https://play-lh.googleusercontent.com/KASznAwCN14pO0rkpAn71MwhFNd9oBBOdzkZgWiSDo0zzbdm94A4kzzKuixngKmnkbc=w240-h480", width=100)
-        st.markdown("*Belanja alat & kebutuhan pertanian.*")
-
-        st.markdown("#### 💧 [e-KPB - Kartu Petani Berjaya](https://play.google.com/store/apps/details?id=com.ekpb.kpbapp)")
-        st.image("https://play-lh.googleusercontent.com/AHaP_GcC8oyXngA_UW47J7uGiM9n3_7lZio8QZ3yoiT9kHf1Znlp9dEnxT1wWmOq1Ds=w240-h480", width=100)
-        st.markdown("*Distribusi pupuk, KUR, dan pembinaan dari Pemprov.*")
-
+    st.markdown("### 📱 Aplikasi Pendukung Petani (Gratis di Play Store):")
+    st.markdown("""
+- 🌱 [**SIPINDO (PT East West Seed Indonesia)**](https://play.google.com/store/apps/details?id=id.co.ewindo.sipindo): Info cuaca, hama, pupuk, dan jadwal tanam.
+- 🌾 [**AgriON (Digital Platform Petani)**](https://play.google.com/store/apps/details?id=id.agron): Komunitas petani dan pengelolaan pertanian.
+- 📦 [**TaniHub (Distribusi Hasil Tani)**](https://play.google.com/store/apps/details?id=com.tanihub.mobile): Jual beli hasil panen langsung.
+- 🧠 [**Agriaku (Belanja kebutuhan tani)**](https://play.google.com/store/apps/details?id=com.agriaku.app): Pembelian pupuk, pestisida, benih.
+- 💧 [**e-KPB Lampung (Kartu Petani Berjaya)**](https://play.google.com/store/apps/details?id=com.ekpb.kpbapp): Akses subsidi dan pembinaan pemerintah.
+""")
 
 # Perhitungan manual prediksi panen
 with st.expander("Hitung Manual Prediksi Panen"):
