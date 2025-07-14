@@ -178,6 +178,20 @@ with st.expander("💹 Harga Komoditas"):
         "Harga (Rp/kg)": [6500, 5300, 10500]
     }))
 
+# ------------------ TIPS PERTANIAN ------------------
+with st.expander("🧠 Tips Pertanian Harian Otomatis"):
+    for _, row in df.iterrows():
+        tips = []
+        if row["Curah Hujan (mm)"] < threshold:
+            tips.append("Lakukan irigasi untuk menjaga kelembaban tanah")
+        if row["Suhu Maks (°C)"] > 33:
+            tips.append("Waspadai stres panas pada padi")
+        if row["Kelembapan (%)"] > 85:
+            tips.append("Tingkatkan kewaspadaan terhadap penyakit jamur")
+        if not tips:
+            tips.append("Kondisi ideal untuk pertumbuhan padi")
+        st.markdown(f" {row['Tanggal'].date()}: {'; '.join(tips)}")
+
 # ------------------ FOOTER ------------------
 st.markdown("---")
 st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
