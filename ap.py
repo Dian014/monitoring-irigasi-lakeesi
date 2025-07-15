@@ -203,34 +203,31 @@ with st.expander("Prediksi Panen"):
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
 
 # Tanya Jawab Pertanian Manual
-st.set_page_config(page_title="Chatbot Pertanian Gratis", layout="centered")
-st.title("🌾 Chatbot Pertanian Gratis (Tanpa API)")
+st.title("Chatbot AI Gratis (Bebas Daftar, Tanpa Torch)")
 
-# Load model dan tokenizer sekali (gunakan cache)
-@st.cache_resource
-def load_model():
-    tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
-    model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
-    return tokenizer, model
-
-tokenizer, model = load_model()
-
-# Inisialisasi session state untuk obrolan
+# Simpan obrolan
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Input pertanyaan dari pengguna
-user_input = st.text_input("Tulis pertanyaan Anda tentang pertanian:")
+user_input = st.text_input("Tulis pertanyaan Anda:")
 
-if user_input:
-    st.session_state.chat_history.append({"role": "user", "text": user_input})
+if st.button("Kirim") and user_input:
+    st.session_state.chat_history.append(("👨‍🌾", user_input))
 
-    # Tokenisasi input dan generate jawaban
-    input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors="pt")
-    bot_output_ids = model.generate(input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
-    bot_reply = tokenizer.decode(bot_output_ids[:, input_ids.shape[-1]:][0], skip_special_tokens=True)
+    # Gunakan API proxy publik (misalnya: https://gpt4free.org/ atau yang lain)
+    api_url = "https://chatgpt-api.shn.hk/v1/"  # Ini contoh endpoint publik
+    response = requests.post(api_url, json={"message": user_input})
 
-    st.session_state.chat_history.append({"role": "bot", "text": bot_reply})
+    if response.status_code == 200:
+        reply = response.json().get("reply", "Maaf, tidak ada jawaban.")
+    else:
+        reply = "Gagal menjawab. Coba lagi nanti."
+
+    st.session_state.chat_history.append(("🤖", reply))
+
+# Tampilkan obrolan
+for role, text in st.session_state.chat_history:
+    st.markdown(f"**{role}**: {text}")
 
 # Tampilkan riwayat percakapan
 for msg in st.session_state.chat_history:
