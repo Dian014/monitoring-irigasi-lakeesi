@@ -439,7 +439,7 @@ def cari_jawaban(pertanyaan, faq_list, threshold=70):
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-st.title("🌾 Chatbot FAQ Pertanian (Offline, Gratis)")
+st.title("Chatbot FAQ Pertanian")
 
 user_input = st.text_input("Tanyakan apa saja tentang pertanian, irigasi, cuaca, hama, dan lingkungan:")
 
@@ -577,7 +577,7 @@ if "todo" not in st.session_state:
 if "todo_update" not in st.session_state:
     st.session_state.todo_update = False  # flag untuk rerun todo
 
-with st.expander("Pengingat Harian (To-Do List)"):
+with st.expander("Pengingat Harian"):
     tugas_baru = st.text_input("Tambah Tugas Baru:")
     if st.button("✅ Simpan", key="btn_simpan_tugas"):
         if tugas_baru.strip():
