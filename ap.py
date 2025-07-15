@@ -13,8 +13,6 @@ import pytz
 import subprocess
 import json
 import os
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -203,10 +201,8 @@ with st.expander("Prediksi Panen"):
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
 
 # Tanya Jawab Pertanian Manual
-st.set_page_config(page_title="Chatbot Pertanian Gratis", layout="centered")
 st.title("🌾 Chatbot Pertanian AI (Gratis)")
 
-# Simpan histori chat
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -214,21 +210,18 @@ user_input = st.text_input("Tanya apa saja tentang pertanian:")
 
 if user_input:
     st.session_state.chat_history.append(("🧑", user_input))
-    
+
     try:
-        # API proxy (bebas tanpa key)
         res = requests.post("https://chatgpt-api.shn.hk/v1/", json={"message": user_input}, timeout=10)
         if res.status_code == 200:
             answer = res.json().get("reply", "Maaf, tidak ada jawaban.")
         else:
             answer = "Gagal menjawab. Server error."
-
     except Exception as e:
         answer = f"Terjadi error: {e}"
 
     st.session_state.chat_history.append(("🤖", answer))
 
-# Tampilkan obrolan
 for role, msg in st.session_state.chat_history:
     st.markdown(f"**{role}**: {msg}")
         
