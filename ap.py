@@ -211,14 +211,25 @@ user_input = st.text_input("Tanya apa saja tentang pertanian:")
 if user_input:
     st.session_state.chat_history.append(("🧑", user_input))
 
+    answer = "Maaf, tidak ada jawaban."
+
     try:
-        res = requests.post("https://chatgpt-api.shn.hk/v1/", json={"message": user_input}, timeout=10)
-        if res.status_code == 200:
-            answer = res.json().get("reply", "Maaf, tidak ada jawaban.")
-        else:
-            answer = "Gagal menjawab. Server error."
+        res = requests.post(
+            "https://chatgpt-api.shn.hk/v1/",
+            json={"message": user_input},
+            timeout=10
+        )
+        res.raise_for_status()  # akan raise HTTPError kalau status bukan 200
+        json_resp = res.json()
+        answer = json_resp.get("reply", "Maaf, tidak ada jawaban.")
+    except requests.exceptions.Timeout:
+        answer = "Permintaan API timeout. Silakan coba lagi."
+    except requests.exceptions.HTTPError as e:
+        answer = f"Terjadi error HTTP: {e.response.status_code}"
+    except requests.exceptions.RequestException as e:
+        answer = f"Terjadi error jaringan: {str(e)}"
     except Exception as e:
-        answer = f"Terjadi error: {e}"
+        answer = f"Terjadi error tidak terduga: {str(e)}"
 
     st.session_state.chat_history.append(("🤖", answer))
 
