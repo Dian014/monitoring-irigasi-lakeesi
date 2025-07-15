@@ -9,3 +9,6 @@ streamlit-folium
 openai
 xlsxwriter
 openpyxl
+transformers
+torch
+
