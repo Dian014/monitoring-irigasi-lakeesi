@@ -13,6 +13,7 @@ import pytz
 import subprocess
 import json
 import os
+from rapidfuzz import process, fuzz
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -201,40 +202,258 @@ with st.expander("Prediksi Panen"):
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
 
 # Tanya Jawab Pertanian Manual
-st.title("🌾 Chatbot Pertanian AI (Gratis)")
+# -------------------- Fungsi Pencarian Jawaban dengan Fuzzy Matching -------------------- #
+faq_pairs = [
+    # Padi
+    ("mengapa padi saya kuning", "Padi kuning biasanya karena kekurangan nitrogen, kurang air, atau serangan hama."),
+    ("cara mengatasi padi kuning", "Berikan pupuk nitrogen, perbaiki irigasi, dan cek hama."),
+    ("mengapa padi layu", "Layu dapat disebabkan kekurangan air, penyakit layu bakteri, atau akar rusak."),
+    ("hama wereng pada padi", "Wereng menghisap getah tanaman dan bisa merusak padi."),
+    ("pengendalian hama wereng", "Gunakan insektisida yang tepat dan varietas tahan hama."),
+    ("penyakit bercak daun pada padi", "Biasanya disebabkan jamur, gunakan fungisida."),
+    ("penyebab padi kerontang", "Kerontang terjadi akibat kurangnya penyerbukan atau kekurangan hara."),
+    ("waktu tanam padi terbaik", "Musim hujan biasanya waktu terbaik untuk tanam padi."),
+    ("apa itu padi organik", "Padi yang dibudidayakan tanpa bahan kimia sintetis."),
+    ("cara meningkatkan hasil panen padi", "Gunakan benih unggul, pupuk tepat, dan pengendalian hama baik."),
 
+    # Jagung
+    ("cara menanam jagung", "Pilih lahan bersih, tanam benih unggul, berikan pupuk dan air cukup."),
+    ("penyakit hawar daun jagung", "Penyakit jamur yang menyebabkan daun mengering, kendalikan dengan fungisida."),
+    ("hama ulat pada jagung", "Ulat memakan daun jagung, kendalikan dengan insektisida atau musuh alami."),
+    ("waktu panen jagung", "Panen ketika biji sudah keras dan kering."),
+
+    # Kedelai
+    ("cara budidaya kedelai", "Tanam di lahan gembur, berikan pupuk dan air cukup."),
+    ("penyakit karat pada kedelai", "Penyakit jamur menyebabkan bercak oranye pada daun."),
+    ("hama penggerek batang kedelai", "Serangga yang merusak batang, kendalikan dengan insektisida."),
+
+    # Irigasi & Curah Hujan
+    ("apa itu irigasi", "Pengairan lahan untuk memenuhi kebutuhan air tanaman."),
+    ("jenis irigasi", "Irigasi tetes, sprinkler, banjir, dan lainnya."),
+    ("curah hujan yang ideal untuk padi", "Sekitar 1000-2000 mm/tahun, tergantung varietas."),
+    ("cara mengukur curah hujan", "Gunakan alat penakar hujan."),
+    ("irigasi tetes", "Memberikan air langsung ke akar dengan jumlah kecil."),
+
+    # Pupuk & Tanah
+    ("jenis pupuk untuk padi", "Urea, SP-36, KCl adalah pupuk utama."),
+    ("pupuk organik", "Pupuk alami seperti kompos dan pupuk kandang."),
+    ("kapan waktu memupuk padi", "Saat umur 20-30 hari dan menjelang berbunga."),
+    ("fungsi pupuk N", "Meningkatkan pertumbuhan daun dan batang."),
+    ("fungsi pupuk P", "Meningkatkan perkembangan akar dan pembungaan."),
+    ("fungsi pupuk K", "Meningkatkan ketahanan tanaman terhadap penyakit."),
+
+    # Hama & Penyakit Umum
+    ("jenis hama padi", "Wereng, penggerek batang, kutu daun, tikus."),
+    ("cara mengendalikan hama tikus", "Perangkap dan rodentisida aman."),
+    ("penyakit blas pada padi", "Penyakit jamur yang menyebabkan bercak hitam pada daun."),
+    ("penyakit hawar daun", "Penyakit jamur yang membuat daun mengering dan mati."),
+    ("cara mengatasi penyakit tanaman", "Gunakan fungisida dan sanitasi lahan."),
+
+    # Lingkungan & Pengelolaan Lahan
+    ("apa itu pertanian berkelanjutan", "Pertanian yang menjaga keseimbangan lingkungan."),
+    ("cara mencegah erosi tanah", "Terasering, mulsa, dan penanaman pohon pelindung."),
+    ("apa itu agroforestri", "Sistem campuran pohon dan tanaman pertanian."),
+    ("cara menjaga kualitas air irigasi", "Hindari pencemaran dan lakukan filtrasi."),
+    ("cara mengatasi kekeringan lahan", "Mulsa, irigasi efisien, dan tanaman tahan kekeringan."),
+
+    # Teknik Budidaya & Praktik Terbaik
+    ("cara rotasi tanaman", "Ganti tanaman setiap musim untuk mencegah hama dan menjaga tanah."),
+    ("manfaat mulsa", "Menjaga kelembaban tanah dan mencegah gulma."),
+    ("cara penyiangan gulma", "Manual atau penggunaan herbisida selektif."),
+    ("apa itu penanaman serentak", "Menanam pada waktu yang sama untuk mengendalikan hama."),
+
+    # Cuaca & Prediksi Panen
+    ("pengaruh suhu terhadap tanaman", "Suhu mempengaruhi fotosintesis dan metabolisme."),
+    ("cara memprediksi hasil panen", "Data cuaca, tanah, dan pengelolaan tanaman."),
+    ("apa itu kelembapan tanah", "Jumlah air yang tersedia di tanah."),
+    ("cara mengukur kelembapan tanah", "Sensor kelembapan atau metode gravimetri."),
+    ("pengaruh curah hujan terhadap panen", "Curah hujan cukup penting untuk pertumbuhan."),
+
+    # Variasi typo dan singkatan umum
+    ("padi kuning", "Padi kuning biasanya karena kekurangan hara."),
+    ("padi layu", "Padi layu bisa karena kekurangan air atau penyakit."),
+    ("irigasi", "Irigasi adalah pengairan lahan."),
+    ("curah hujan", "Jumlah air hujan di suatu tempat."),
+    ("hama padi", "Hama umum padi termasuk wereng dan tikus."),
+    ("pupuk padi", "Pupuk utama padi adalah Urea, SP-36, dan KCl."),
+    ("kualitas air", "Air harus bersih untuk irigasi."),
+    ("penyakit tanaman", "Gunakan fungisida untuk mengatasi penyakit."),
+    ("kelembapan tanah", "Kelembapan tanah penting bagi tanaman."),
+    ("pengaruh suhu", "Suhu mempengaruhi metabolisme tanaman."),
+
+    # Tambahan umum lain
+    ("apa itu penyerbukan", "Proses perpindahan serbuk sari ke kepala putik."),
+    ("cara meningkatkan kesuburan tanah", "Tambahkan pupuk organik dan lakukan rotasi tanaman."),
+    ("apa itu pupuk hayati", "Pupuk yang mengandung mikroorganisme bermanfaat."),
+    ("cara mengatasi kekeringan", "Gunakan mulsa dan irigasi yang tepat."),
+    ("apa itu gulma", "Tanaman pengganggu yang bersaing dengan tanaman utama."),
+    ("cara pengendalian gulma", "Penyiangan manual atau herbisida."),
+    ("apa itu erosi", "Hilangnya lapisan tanah atas oleh air atau angin."),
+    ("cara menjaga kelembaban tanah", "Penggunaan mulsa dan irigasi teratur."),
+    ("apa itu rehabilitasi lahan", "Pemulihan lahan yang rusak agar dapat produktif kembali."),
+    ("cara memanfaatkan limbah pertanian", "Dijadikan kompos atau bahan bakar biomassa."),
+    # Padi lanjut
+    ("penyebab daun padi berlubang", "Biasanya karena serangan hama penggerek daun atau ulat."),
+    ("cara mengatasi daun padi berlubang", "Semprot insektisida dan gunakan varietas tahan hama."),
+    ("padi gagal panen", "Bisa karena kekeringan, serangan hama parah, atau penyakit berat."),
+    ("penyakit hawar daun", "Penyakit jamur yang menyebabkan daun mengering dan gugur."),
+    ("pengendalian penyakit hawar daun", "Gunakan fungisida dan rotasi tanaman."),
+    ("kapan pemupukan padi", "Umumnya pada fase vegetatif dan generatif."),
+    ("pupuk susulan padi", "Diberikan saat tanaman mulai berbunga agar hasil optimal."),
+    ("penyebab padi keriting", "Kekurangan unsur hara atau serangan hama."),
+    ("cara mengatasi padi keriting", "Berikan pupuk daun dan kendalikan hama."),
+    ("penyebab padi busuk", "Serangan jamur seperti padi bercak dan jamur batang."),
+    ("apa itu padi organik", "Padi yang dibudidayakan tanpa pestisida dan pupuk kimia."),
+    ("cara tanam padi organik", "Gunakan pupuk organik, pestisida alami, dan pengelolaan tanah baik."),
+    ("berat panen padi per hektar", "Rata-rata 5-7 ton gabah kering tergantung varietas dan pengelolaan."),
+
+    # Jagung lanjut
+    ("hama wereng jagung", "Wereng jagung menyerang daun dan batang, menyebabkan layu."),
+    ("penyakit busuk batang jagung", "Biasanya disebabkan jamur, kendalikan dengan fungisida."),
+    ("pupuk terbaik untuk jagung", "Pupuk NPK dan Urea, sesuai kebutuhan tanah."),
+    ("kapan panen jagung", "Setelah 90-110 hari setelah tanam tergantung varietas."),
+    ("penyebab jagung gagal panen", "Serangan hama, kekurangan air, atau cuaca ekstrem."),
+
+    # Kedelai lanjut
+    ("penyebab daun kedelai keriting", "Infeksi virus atau serangan hama."),
+    ("cara mengatasi virus pada kedelai", "Gunakan benih sehat dan kendalikan vektor serangga."),
+    ("hama kutu daun kedelai", "Kutu daun menyebabkan daun menguning dan rontok."),
+    ("waktu tanam kedelai", "Pada musim kemarau awal dengan pengairan memadai."),
+
+    # Irigasi dan pengairan lanjut
+    ("apa itu irigasi tetes", "Metode pengairan yang mengalirkan air langsung ke akar."),
+    ("keuntungan irigasi tetes", "Hemat air dan mencegah pemborosan."),
+    ("irigasi banjir", "Pengairan lahan dengan cara membanjiri seluruh area."),
+    ("kapan irigasi dilakukan", "Saat curah hujan kurang dari kebutuhan tanaman."),
+    ("cara cek kelembaban tanah", "Gunakan sensor kelembaban atau metode manual seperti cocol tanah."),
+    ("irigasi otomatis", "Pengairan yang dikontrol dengan sistem elektronik sesuai kebutuhan tanaman."),
+    ("penyebab irigasi tidak merata", "Saluran tersumbat atau desain sistem yang buruk."),
+    ("cara memperbaiki saluran irigasi", "Bersihkan dan perbaiki kerusakan fisik saluran."),
+
+    # Curah hujan dan cuaca lanjut
+    ("apa itu kelembapan relatif", "Persentase kadar uap air di udara dibandingkan kapasitas maksimum."),
+    ("pengaruh curah hujan rendah", "Tanaman bisa stres kekurangan air dan pertumbuhan terganggu."),
+    ("curah hujan tinggi berdampak apa", "Bisa menyebabkan genangan dan penyakit jamur."),
+    ("alat ukur suhu", "Termometer."),
+    ("alat ukur kelembapan", "Higrometer atau sensor kelembapan."),
+
+    # Pupuk dan tanah lanjut
+    ("fungsi pupuk organik", "Meningkatkan kesuburan dan struktur tanah."),
+    ("pupuk kimia yang umum", "Urea, SP-36, KCl, NPK."),
+    ("apa itu pupuk dasar", "Pupuk yang diberikan sebelum tanam."),
+    ("apa itu pupuk susulan", "Pupuk yang diberikan setelah tanaman tumbuh."),
+    ("tanda kekurangan nitrogen", "Daun menguning terutama daun tua."),
+    ("tanda kekurangan fosfor", "Tanaman tumbuh lambat dan warna daun gelap."),
+    ("tanda kekurangan kalium", "Daun menguning di tepi dan mudah rusak."),
+    ("pengaruh pH tanah", "pH mempengaruhi ketersediaan hara untuk tanaman."),
+    ("cara memperbaiki pH tanah asam", "Tambahkan kapur atau dolomit."),
+
+    # Hama & penyakit lanjut
+    ("jenis hama tikus", "Tikus sawah, tikus rumah, tikus ladang."),
+    ("cara mengendalikan hama tikus", "Perangkap, rodentisida, dan sanitasi lahan."),
+    ("penyakit blas", "Penyakit jamur yang menyebabkan bercak hitam."),
+    ("penyakit hawar", "Penyakit jamur yang menyebabkan daun layu."),
+    ("penyakit bulai", "Penyakit yang menyebabkan bulir kosong."),
+    ("pengendalian penyakit", "Gunakan fungisida dan varietas tahan."),
+    ("serangga penghisap getah", "Wereng dan kutu daun."),
+    ("serangga penggerek batang", "Penggerek batang merusak jaringan dalam tanaman."),
+
+    # Lingkungan & pengelolaan lahan lanjut
+    ("apa itu konservasi tanah", "Upaya mencegah erosi dan degradasi tanah."),
+    ("cara konservasi tanah", "Terasering, mulsa, penanaman pohon."),
+    ("apa itu agroekologi", "Sistem pertanian yang ramah lingkungan."),
+    ("pengelolaan limbah pertanian", "Dijadikan kompos atau biogas."),
+    ("pengaruh polusi air irigasi", "Merusak tanaman dan mengurangi hasil panen."),
+
+    # Teknik budidaya & praktik terbaik lanjut
+    ("apa itu tanam tumpangsari", "Menanam dua jenis tanaman secara bersamaan."),
+    ("manfaat tanam tumpangsari", "Mengoptimalkan lahan dan mengendalikan hama."),
+    ("apa itu sistem tanam jajar legowo", "Baris tanaman dibuat lebih renggang untuk sirkulasi udara."),
+    ("manfaat sistem legowo", "Meningkatkan hasil dan mengurangi penyakit."),
+    ("apa itu pemangkasan", "Mengurangi bagian tanaman untuk memperbaiki pertumbuhan."),
+
+    # Cuaca & prediksi lanjut
+    ("apa itu indeks panas tanaman", "Pengukuran stres panas pada tanaman."),
+    ("cara memprediksi hasil panen", "Menggunakan data cuaca, tanah, dan pemodelan statistik."),
+    ("pengaruh angin kencang", "Merusak tanaman dan mempercepat penguapan air."),
+    ("pengaruh kelembapan tinggi", "Meningkatkan risiko penyakit jamur."),
+
+    # Terminologi umum & typo tambahan
+    ("padi kuneng", "Padi kuning biasanya karena kekurangan hara."),
+    ("padi kering", "Bisa disebabkan kekurangan air atau penyakit."),
+    ("penyakit padi", "Penyakit umum padi termasuk blas, hawar, dan bulai."),
+    ("cara tanam jagung", "Pilih lahan bersih, berikan pupuk, dan siram cukup."),
+    ("hama padi wereng", "Wereng adalah hama yang menghisap getah tanaman."),
+    ("pupuk urea", "Pupuk nitrogen untuk pertumbuhan vegetatif."),
+    ("pupuk sp36", "Pupuk fosfor untuk perkembangan akar."),
+    ("kapan panen padi", "Biasanya 3-4 bulan setelah tanam."),
+    ("kapan panen jagung", "Setelah 3-4 bulan sesuai varietas."),
+
+    # Tips dan trik
+    ("tips menanam padi", "Gunakan benih unggul, jaga irigasi dan kendalikan hama."),
+    ("tips irigasi hemat", "Gunakan sistem irigasi tetes atau jadwal irigasi tepat."),
+    ("cara menghindari gulma", "Penyiangan rutin dan mulsa."),
+    ("cara meningkatkan hasil panen", "Pengelolaan tanah baik, pupuk tepat, dan kendali hama."),
+    ("cara mendeteksi penyakit tanaman", "Perhatikan gejala seperti perubahan warna dan tekstur daun."),
+
+    # Tanya umum terkait pertanian
+    ("apa itu pertanian modern", "Pertanian yang menggunakan teknologi dan ilmu pengetahuan terkini."),
+    ("apa itu smart farming", "Pertanian dengan otomatisasi dan sensor canggih."),
+    ("apa itu drone pertanian", "Drone yang digunakan untuk pemantauan dan penyemprotan."),
+    ("apa itu hidroponik", "Budidaya tanaman tanpa tanah menggunakan larutan nutrisi."),
+    ("apa itu aquaponik", "Sistem gabungan budidaya ikan dan tanaman."),
+
+    # Pertanyaan seputar lingkungan
+    ("bagaimana menjaga lingkungan pertanian", "Kurangi penggunaan pestisida, gunakan pupuk organik, dan konservasi air."),
+    ("apa itu deforestasi", "Penggundulan hutan yang berdampak buruk pada ekosistem."),
+    ("bagaimana perubahan iklim mempengaruhi pertanian", "Cuaca ekstrem dan pola hujan yang tidak menentu dapat merusak tanaman."),
+
+    # Pertanyaan soal peralatan
+    ("alat untuk mengukur pH tanah", "pH meter atau kertas lakmus."),
+    ("alat pengukur curah hujan", "Penakar hujan."),
+    ("alat pengukur kelembapan tanah", "Sensor kelembapan atau tensiometer."),
+
+    # Pertanyaan seputar hasil panen dan pasar
+    ("bagaimana menentukan harga gabah", "Bergantung kualitas, pasokan, dan permintaan pasar."),
+    ("apa itu gabah kering", "Gabah yang sudah dikeringkan untuk penyimpanan."),
+
+    # Tambahan typo dan variasi bahasa gaul
+    ("padi kuneng", "Padi kuning biasanya karena kekurangan hara."),
+    ("padi kering banget", "Mungkin tanaman kurang air atau terkena penyakit."),
+    ("padi rusak", "Periksa hama dan penyakit serta kondisi air."),
+    ("tanem padi gimana", "Gunakan benih bagus, siram teratur, dan pupuk tepat."),
+    ("jagung ga tumbuh", "Cek kualitas benih dan kondisi tanah serta air."),
+    ("pupuk kurang", "Tanaman akan terlihat layu dan kuning."),
+
+def cari_jawaban(pertanyaan, faq_list, threshold=70):
+    pertanyaan = pertanyaan.lower()
+    pertanyaan = pertanyaan.strip()
+    # Cari pertanyaan paling mirip
+    hasil = process.extractOne(pertanyaan, [q for q, _ in faq_list], scorer=fuzz.token_set_ratio)
+    if hasil and hasil[1] >= threshold:
+        for q, a in faq_list:
+            if q == hasil[0]:
+                return a
+    return "Maaf, saya belum punya jawaban untuk pertanyaan itu. Silakan tanyakan hal lain."
+
+# -------------------- Streamlit Chatbot Interface -------------------- #
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-user_input = st.text_input("Tanya apa saja tentang pertanian:")
+st.title("🌾 Chatbot FAQ Pertanian (Offline, Gratis)")
+
+user_input = st.text_input("Tanyakan apa saja tentang pertanian, irigasi, cuaca, hama, dan lingkungan:")
 
 if user_input:
     st.session_state.chat_history.append(("🧑", user_input))
-
-    answer = "Maaf, tidak ada jawaban."
-
-    try:
-        res = requests.post(
-            "https://chatgpt-api.shn.hk/v1/",
-            json={"message": user_input},
-            timeout=10
-        )
-        res.raise_for_status()  # akan raise HTTPError kalau status bukan 200
-        json_resp = res.json()
-        answer = json_resp.get("reply", "Maaf, tidak ada jawaban.")
-    except requests.exceptions.Timeout:
-        answer = "Permintaan API timeout. Silakan coba lagi."
-    except requests.exceptions.HTTPError as e:
-        answer = f"Terjadi error HTTP: {e.response.status_code}"
-    except requests.exceptions.RequestException as e:
-        answer = f"Terjadi error jaringan: {str(e)}"
-    except Exception as e:
-        answer = f"Terjadi error tidak terduga: {str(e)}"
-
-    st.session_state.chat_history.append(("🤖", answer))
+    jawaban = cari_jawaban(user_input, faq_pairs)
+    st.session_state.chat_history.append(("🤖", jawaban))
 
 for role, msg in st.session_state.chat_history:
-    st.markdown(f"**{role}**: {msg}")
+    if role == "🧑":
+        st.markdown(f"**{role}**: {msg}")
+    else:
+        st.markdown(f"**{role}**: {msg}")
         
 # Fitur Tambahan: Kalkulator Pupuk
 with st.expander("Kalkulator Pemupukan Dasar"):
