@@ -459,16 +459,34 @@ with st.expander("Kalkulator Pemupukan Dasar"):
     tanaman = st.selectbox("Jenis Tanaman", ["Padi", "Jagung", "Kedelai"])
     luas_lahan = st.number_input("Luas Lahan (ha)", value=1.0, key="pupuk_luas")
 
-    dosis = {
-        "Padi": {"Urea": 250, "SP-36": 100, "KCl": 100},
-        "Jagung": {"Urea": 300, "SP-36": 150, "KCl": 100},
-        "Kedelai": {"Urea": 100, "SP-36": 100, "KCl": 75},
+    # Data dosis dan penjelasan per tanaman dan pupuk
+    rekomendasi_pupuk = {
+        "Padi": {
+            "Urea": {"dosis": 250, "fungsi": "Merangsang pertumbuhan daun dan batang"},
+            "SP-36": {"dosis": 100, "fungsi": "Membentuk akar dan anakan, serta meningkatkan hasil malai"},
+            "KCl": {"dosis": 100, "fungsi": "Meningkatkan ketahanan terhadap hama/penyakit dan kualitas gabah"}
+        },
+        "Jagung": {
+            "Urea": {"dosis": 300, "fungsi": "Mendorong pertumbuhan vegetatif (daun dan batang)"},
+            "SP-36": {"dosis": 150, "fungsi": "Meningkatkan perkembangan akar dan pembentukan tongkol"},
+            "KCl": {"dosis": 100, "fungsi": "Meningkatkan pengisian biji dan ketahanan tanaman"}
+        },
+        "Kedelai": {
+            "Urea": {"dosis": 100, "fungsi": "Dosis rendah karena kedelai bisa fiksasi nitrogen sendiri"},
+            "SP-36": {"dosis": 100, "fungsi": "Mendukung pembentukan bunga dan polong"},
+            "KCl": {"dosis": 75, "fungsi": "Meningkatkan kualitas dan daya simpan hasil panen"}
+        }
     }
-    pupuk = dosis[tanaman]
-    st.write("### Kebutuhan Pupuk per Jenis:")
-    for jenis, kg_per_ha in pupuk.items():
-        total_kg = kg_per_ha * luas_lahan
-        st.write(f"- {jenis}: {total_kg} kg")
+
+    st.markdown(f"### 📌 Rekomendasi Pupuk untuk **{tanaman}**")
+    total_kebutuhan = rekomendasi_pupuk[tanaman]
+
+    for jenis_pupuk, data in total_kebutuhan.items():
+        total_kg = data["dosis"] * luas_lahan
+        st.markdown(
+            f"- **{jenis_pupuk}**: {total_kg} kg/ha  \n"
+            f"  ⤷ _{data['fungsi']}_"
+        )
 
 # Harga komoditas
 with st.expander("Harga Komoditas"):
