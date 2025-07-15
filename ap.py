@@ -13,6 +13,8 @@ import pytz
 import subprocess
 import json
 import os
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # ------------------ KONFIGURASI AWAL ------------------
 st.set_page_config(
@@ -200,34 +202,43 @@ with st.expander("Prediksi Panen"):
 
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
 
-
 # Tanya Jawab Pertanian Manual
-st.markdown("---")
-st.title("Tanya Jawab Pertanian")
+st.set_page_config(page_title="Chatbot Pertanian Gratis", layout="centered")
+st.title("🌾 Chatbot Pertanian Gratis (Tanpa API)")
 
-faq_dict = {
-    "Apa solusi hama wereng pada padi?": "Gunakan insektisida berbahan aktif imidakloprid secara teratur dan pantau populasi hama secara berkala.",
-    "Kapan waktu terbaik untuk tanam padi?": "Waktu terbaik adalah awal musim hujan, sekitar Oktober-November.",
-    "Apa yang harus dilakukan saat curah hujan tinggi?": "Pastikan drainase sawah baik dan hindari pemupukan saat hujan deras.",
-    "Apa jenis pupuk terbaik untuk padi?": "Gunakan kombinasi Urea, SP-36 dan KCl dengan dosis sesuai fase pertumbuhan.",
-    "Bagaimana cara mengatasi tanah asam?": "Gunakan kapur dolomit untuk menetralkan pH tanah.",
-    "Bagaimana cara meningkatkan hasil panen?": "Gunakan benih unggul, pupuk berimbang, dan lakukan pengendalian hama terpadu."
-}
+# Load model dan tokenizer sekali (gunakan cache)
+@st.cache_resource
+def load_model():
+    tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
+    model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+    return tokenizer, model
 
-st.subheader("Tanya Jawab Pertanian (Chat Bot)")
-faq_options = list(faq_dict.keys())
-pertanyaan_manual = st.selectbox("Pilih atau tulis pertanyaan:", [""] + faq_options)
-custom_pertanyaan = st.text_input("Atau ketik pertanyaan Anda sendiri (opsional):")
+tokenizer, model = load_model()
 
-if st.button("Jawab Pertanyaan"):
-    pertanyaan_input = custom_pertanyaan.strip() if custom_pertanyaan else pertanyaan_manual
-    jawaban = faq_dict.get(pertanyaan_input, None)
-    if jawaban:
-        st.success(f"Jawaban untuk: *{pertanyaan_input}*")
-        st.write(jawaban)
+# Inisialisasi session state untuk obrolan
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# Input pertanyaan dari pengguna
+user_input = st.text_input("Tulis pertanyaan Anda tentang pertanian:")
+
+if user_input:
+    st.session_state.chat_history.append({"role": "user", "text": user_input})
+
+    # Tokenisasi input dan generate jawaban
+    input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors="pt")
+    bot_output_ids = model.generate(input_ids, max_length=1000, pad_token_id=tokenizer.eos_token_id)
+    bot_reply = tokenizer.decode(bot_output_ids[:, input_ids.shape[-1]:][0], skip_special_tokens=True)
+
+    st.session_state.chat_history.append({"role": "bot", "text": bot_reply})
+
+# Tampilkan riwayat percakapan
+for msg in st.session_state.chat_history:
+    if msg["role"] == "user":
+        st.markdown(f"🧑: {msg['text']}")
     else:
-        st.warning(f"Pertanyaan *{pertanyaan_input}* belum tersedia. Silakan hubungi penyuluh pertanian atau kirim pertanyaan ke email: ekaputradian01@gmail.com")
-
+        st.markdown(f"🤖: {msg['text']}")
+        
 # Fitur Tambahan: Kalkulator Pupuk
 with st.expander("Kalkulator Pemupukan Dasar"):
     tanaman = st.selectbox("Jenis Tanaman", ["Padi", "Jagung", "Kedelai"])
