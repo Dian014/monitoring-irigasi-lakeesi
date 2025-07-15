@@ -9,6 +9,7 @@ from sklearn.linear_model import LinearRegression
 from io import BytesIO
 import base64
 from datetime import datetime
+import pytz
 import subprocess
 import json
 import os
@@ -25,7 +26,7 @@ LAT = st.sidebar.number_input("Latitude", value=-3.921406, format="%.6f")
 LON = st.sidebar.number_input("Longitude", value=119.772731, format="%.6f")
 
 # ------------------ HEADER ------------------
-st.title("Sistem Monitoring Irigasi & Pertanian Lakessi")
+st.title("Dashboard Pertanian Cerdas – Kelurahan Lakessi")
 st.markdown("""
 Lokasi: Kelurahan Lakessi, Maritengngae, Sidrap – Sulawesi Selatan  
 Dikembangkan oleh Dian Eka Putra | Email: ekaputradian01@gmail.com | WA: 085654073752
@@ -213,11 +214,19 @@ faq_dict = {
     "Bagaimana cara meningkatkan hasil panen?": "Gunakan benih unggul, pupuk berimbang, dan lakukan pengendalian hama terpadu."
 }
 
-pertanyaan_manual = st.text_input("Tulis pertanyaan Anda:")
+st.subheader("Tanya Jawab Pertanian (Chat Bot)")
+faq_options = list(faq_dict.keys())
+pertanyaan_manual = st.selectbox("Pilih atau tulis pertanyaan:", [""] + faq_options)
+custom_pertanyaan = st.text_input("Atau ketik pertanyaan Anda sendiri (opsional):")
+
 if st.button("Jawab Pertanyaan"):
-    jawaban = faq_dict.get(pertanyaan_manual.strip(), "Maaf, jawaban belum tersedia dalam basis data. Silakan konsultasi dengan penyuluh pertanian setempat.")
-    st.success("Jawaban:")
-    st.write(jawaban)
+    pertanyaan_input = custom_pertanyaan.strip() if custom_pertanyaan else pertanyaan_manual
+    jawaban = faq_dict.get(pertanyaan_input, None)
+    if jawaban:
+        st.success(f"Jawaban untuk: *{pertanyaan_input}*")
+        st.write(jawaban)
+    else:
+        st.warning(f"Pertanyaan *{pertanyaan_input}* belum tersedia. Silakan hubungi penyuluh pertanian atau kirim pertanyaan ke email: ekaputradian01@gmail.com")
 
 # Fitur Tambahan: Kalkulator Pupuk
 with st.expander("Kalkulator Pemupukan Dasar"):
@@ -295,7 +304,7 @@ with st.expander("Laporan Warga"):
                     "Jenis": jenis,
                     "Lokasi": lokasi.strip(),
                     "Deskripsi": isi.strip(),
-                    "Tanggal": datetime.now().strftime("%d %B %Y %H:%M")
+                    "Tanggal": datetime.now(pytz.timezone("Asia/Makassar")).strftime("%d %B %Y %H:%M")
                 }
                 st.session_state.laporan.append(new_laporan)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
