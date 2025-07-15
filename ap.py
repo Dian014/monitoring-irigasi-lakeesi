@@ -201,8 +201,6 @@ with st.expander("Prediksi Panen"):
 
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
 
-# Tanya Jawab Pertanian Manual
-# -------------------- Fungsi Pencarian Jawaban dengan Fuzzy Matching -------------------- #
 faq_pairs = [
     # Padi
     ("mengapa padi saya kuning", "Padi kuning biasanya karena kekurangan nitrogen, kurang air, atau serangan hama."),
@@ -424,6 +422,7 @@ faq_pairs = [
     ("tanem padi gimana", "Gunakan benih bagus, siram teratur, dan pupuk tepat."),
     ("jagung ga tumbuh", "Cek kualitas benih dan kondisi tanah serta air."),
     ("pupuk kurang", "Tanaman akan terlihat layu dan kuning."),
+]
 
 def cari_jawaban(pertanyaan, faq_list, threshold=70):
     pertanyaan = pertanyaan.lower()
