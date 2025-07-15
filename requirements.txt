@@ -10,4 +10,6 @@ openai
 xlsxwriter
 openpyxl
 pytz
+rapidfuzz
+
 
