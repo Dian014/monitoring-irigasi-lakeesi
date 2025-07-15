@@ -203,38 +203,34 @@ with st.expander("Prediksi Panen"):
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
 
 # Tanya Jawab Pertanian Manual
-st.title("Chatbot AI Gratis (Bebas Daftar, Tanpa Torch)")
+st.set_page_config(page_title="Chatbot Pertanian Gratis", layout="centered")
+st.title("🌾 Chatbot Pertanian AI (Gratis)")
 
-# Simpan obrolan
+# Simpan histori chat
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-user_input = st.text_input("Tulis pertanyaan Anda:")
+user_input = st.text_input("Tanya apa saja tentang pertanian:")
 
-if st.button("Kirim") and user_input:
-    st.session_state.chat_history.append(("👨‍🌾", user_input))
+if user_input:
+    st.session_state.chat_history.append(("🧑", user_input))
+    
+    try:
+        # API proxy (bebas tanpa key)
+        res = requests.post("https://chatgpt-api.shn.hk/v1/", json={"message": user_input}, timeout=10)
+        if res.status_code == 200:
+            answer = res.json().get("reply", "Maaf, tidak ada jawaban.")
+        else:
+            answer = "Gagal menjawab. Server error."
 
-    # Gunakan API proxy publik (misalnya: https://gpt4free.org/ atau yang lain)
-    api_url = "https://chatgpt-api.shn.hk/v1/"  # Ini contoh endpoint publik
-    response = requests.post(api_url, json={"message": user_input})
+    except Exception as e:
+        answer = f"Terjadi error: {e}"
 
-    if response.status_code == 200:
-        reply = response.json().get("reply", "Maaf, tidak ada jawaban.")
-    else:
-        reply = "Gagal menjawab. Coba lagi nanti."
-
-    st.session_state.chat_history.append(("🤖", reply))
+    st.session_state.chat_history.append(("🤖", answer))
 
 # Tampilkan obrolan
-for role, text in st.session_state.chat_history:
-    st.markdown(f"**{role}**: {text}")
-
-# Tampilkan riwayat percakapan
-for msg in st.session_state.chat_history:
-    if msg["role"] == "user":
-        st.markdown(f"🧑: {msg['text']}")
-    else:
-        st.markdown(f"🤖: {msg['text']}")
+for role, msg in st.session_state.chat_history:
+    st.markdown(f"**{role}**: {msg}")
         
 # Fitur Tambahan: Kalkulator Pupuk
 with st.expander("Kalkulator Pemupukan Dasar"):
