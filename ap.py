@@ -174,7 +174,7 @@ with st.expander("Prediksi Panen"):
     pendapatan_auto = total_auto * harga_auto
 
     # Proyeksi Panen Tahunan Otomatis (2 Kali Panen)
-    st.markdown("### 📆 Proyeksi Panen Tahunan")
+    st.markdown("Proyeksi Panen Tahunan")
 
     # Gunakan data 7 hari pertama untuk panen 1
     df_panen1 = df_harian.head(7)
@@ -197,10 +197,10 @@ with st.expander("Prediksi Panen"):
     uang_total = hasil_total * harga_rp
 
     # Tampilkan hasil
-    st.write("#### 🌾 Panen Pertama")
+    st.write("Panen Pertama")
     st.write(f"- Prediksi Hasil: {pred1:,.0f} kg/ha | Total: {total1:,.0f} kg | Rp {total1 * harga_rp:,.0f}")
 
-    st.write("#### 🌾 Panen Kedua")
+    st.write("Panen Kedua")
     st.write(f"- Prediksi Hasil: {pred2:,.0f} kg/ha | Total: {total2:,.0f} kg | Rp {total2 * harga_rp:,.0f}")
 
     st.success(f"🟩 Total Panen Tahunan: {hasil_total:,.0f} kg | Rp {uang_total:,.0f}")
@@ -685,4 +685,5 @@ with st.expander("Pengingat Harian"):
 # Footer
 st.markdown("---")
 st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
+
 
