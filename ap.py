@@ -8,11 +8,15 @@ from streamlit_folium import st_folium
 from sklearn.linear_model import LinearRegression
 from io import BytesIO
 import base64
+from datetime import datetime as dt
 from datetime import datetime
+UPLOAD_DIR = "uploads"
+LAPORAN_FILE = "laporan_warga.json"
 import pytz
 import subprocess
 import json
 import os
+from PIL import Image
 from rapidfuzz import process, fuzz
 
 # ------------------ KONFIGURASI AWAL ------------------
@@ -454,7 +458,7 @@ for role, msg in st.session_state.chat_history:
     else:
         st.markdown(f"**{role}**: {msg}")
         
-# Fitur Tambahan: Kalkulator Pupuk
+# ------------------ Kalkulator Pemupukan Dasar ------------------
 with st.expander("Kalkulator Pemupukan Dasar"):
     tanaman = st.selectbox("Jenis Tanaman", ["Padi", "Jagung", "Kedelai"])
     luas_lahan = st.number_input("Luas Lahan (ha)", value=1.0, key="pupuk_luas")
@@ -478,23 +482,66 @@ with st.expander("Kalkulator Pemupukan Dasar"):
         }
     }
 
-    st.markdown(f"### 📌 Rekomendasi Pupuk untuk **{tanaman}**")
-    total_kebutuhan = rekomendasi_pupuk[tanaman]
+    st.markdown(f"Rekomendasi Pupuk untuk **{tanaman}** per {luas_lahan} ha")
+    data_tabel = []
 
-    for jenis_pupuk, data in total_kebutuhan.items():
+    for jenis_pupuk, data in rekomendasi_pupuk[tanaman].items():
         total_kg = data["dosis"] * luas_lahan
-        st.markdown(
-            f"- **{jenis_pupuk}**: {total_kg} kg/ha  \n"
-            f"  ⤷ _{data['fungsi']}_"
-        )
+        data_tabel.append({
+            "Jenis Pupuk": jenis_pupuk,
+            "Total Kebutuhan (kg)": total_kg,
+            "Fungsi": data["fungsi"]
+        })
 
-# Harga komoditas
+    st.table(pd.DataFrame(data_tabel))
+    
+# ------------------ Harga Komoditas ------------------
+
+# Nama file harga komoditas
+HARGA_FILE = "data/harga_komoditas.json"
+
+# Cegah error folder
+if not os.path.exists("data"):
+    os.makedirs("data")
+
+# Fungsi load/save data harga
+def load_harga_komoditas():
+    if os.path.exists(HARGA_FILE):
+        with open(HARGA_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                pass
+    return [
+        {"Komoditas": "Gabah Kering", "Harga (Rp/kg)": 7000},
+        {"Komoditas": "Jagung", "Harga (Rp/kg)": 5300},
+        {"Komoditas": "Beras Medium", "Harga (Rp/kg)": 10500}
+    ]
+
+def save_harga_komoditas(data):
+    with open(HARGA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+# Inisialisasi harga di session_state
+if "harga_komoditas" not in st.session_state:
+    st.session_state.harga_komoditas = load_harga_komoditas()
+
 with st.expander("Harga Komoditas"):
-    st.table(pd.DataFrame({
-        "Komoditas": ["Gabah Kering", "Jagung", "Beras Medium"],
-        "Harga (Rp/kg)": [6500, 5300, 10500]
-    }))
+    st.markdown("Silakan ubah harga langsung pada kolom input di bawah ini.")
 
+    new_data = []
+    for i, row in enumerate(st.session_state.harga_komoditas):
+        komoditas = st.text_input(f"Komoditas {i+1}", value=row["Komoditas"], key=f"komo_{i}")
+        harga = st.number_input(f"Harga {komoditas} (Rp/kg)", value=row["Harga (Rp/kg)"], key=f"harga_{i}")
+        new_data.append({"Komoditas": komoditas, "Harga (Rp/kg)": harga})
+
+    if st.button("Simpan Harga Komoditas"):
+        st.session_state.harga_komoditas = new_data
+        save_harga_komoditas(new_data)
+        st.success("Harga komoditas berhasil diperbarui.")
+
+    st.markdown("Tabel Harga Saat Ini")
+    st.table(pd.DataFrame(st.session_state.harga_komoditas))
 # ------------------ TIPS PERTANIAN ------------------
 with st.expander("Tips Pertanian Harian Otomatis"):
     for _, row in df_harian.iterrows():
@@ -510,7 +557,9 @@ with st.expander("Tips Pertanian Harian Otomatis"):
         st.markdown(f" {row['Tanggal'].date()}: {'; '.join(tips)}")
 
 # ------------------ LAPORAN WARGA ------------------
-LAPORAN_FILE = "laporan_warga.json"
+# Pastikan folder upload ada
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 def load_data(filename):
     if os.path.exists(filename):
@@ -529,7 +578,7 @@ if "laporan" not in st.session_state:
     st.session_state.laporan = load_data(LAPORAN_FILE)
 
 if "laporan_update" not in st.session_state:
-    st.session_state.laporan_update = False  # flag untuk rerun laporan
+    st.session_state.laporan_update = False
 
 with st.expander("Laporan Warga"):
     with st.form("form_laporan"):
@@ -538,17 +587,29 @@ with st.expander("Laporan Warga"):
         jenis = st.selectbox("Jenis", ["Masalah Irigasi", "Gangguan Hama", "Kondisi Cuaca", "Lainnya"])
         lokasi = st.text_input("Lokasi")
         isi = st.text_area("Deskripsi")
+        gambar = st.file_uploader("Upload Gambar (opsional)", type=["png", "jpg", "jpeg"])
         kirim = st.form_submit_button("Kirim")
 
         if kirim:
             if nama.strip() and kontak.strip() and isi.strip():
+                path_gambar = None
+                if gambar is not None:
+                    # Simpan gambar ke folder upload dengan nama unik
+                    ext = os.path.splitext(gambar.name)[1]
+                    filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+                    filepath = os.path.join(UPLOAD_DIR, filename)
+                    with open(filepath, "wb") as f:
+                        f.write(gambar.getbuffer())
+                    path_gambar = filepath
+
                 new_laporan = {
                     "Nama": nama.strip(),
                     "Kontak": kontak.strip(),
                     "Jenis": jenis,
                     "Lokasi": lokasi.strip(),
                     "Deskripsi": isi.strip(),
-                    "Tanggal": datetime.now(pytz.timezone("Asia/Makassar")).strftime("%d %B %Y %H:%M")
+                    "Tanggal": datetime.now(pytz.timezone("Asia/Makassar")).strftime("%d %B %Y %H:%M"),
+                    "Gambar": path_gambar,
                 }
                 st.session_state.laporan.append(new_laporan)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
@@ -557,9 +618,9 @@ with st.expander("Laporan Warga"):
             else:
                 st.warning("Lengkapi semua isian sebelum mengirim laporan.")
 
-    # Tampilkan laporan warga (di luar form)
+    # Tampilkan laporan warga
     for i, lap in enumerate(st.session_state.laporan):
-        col1, col2 = st.columns([0.9, 0.1])
+        col1, col2 = st.columns([0.8, 0.2])
         with col1:
             st.markdown(
                 f"**{lap['Tanggal']}**  \n"
@@ -567,11 +628,22 @@ with st.expander("Laporan Warga"):
                 f"{lap['Lokasi']}  \n"
                 f"{lap['Deskripsi']}"
             )
+            if lap.get("Gambar"):
+                try:
+                    img = Image.open(lap["Gambar"])
+                    st.image(img, width=300)
+                except Exception as e:
+                    st.warning("Gambar tidak dapat ditampilkan.")
         with col2:
             if st.button("🗑️ Hapus", key=f"del_lap_{i}"):
+                # Hapus file gambar jika ada
+                if lap.get("Gambar") and os.path.exists(lap["Gambar"]):
+                    os.remove(lap["Gambar"])
                 st.session_state.laporan.pop(i)
                 save_data(LAPORAN_FILE, st.session_state.laporan)
                 st.session_state.laporan_update = True
+                st.experimental_rerun()
+
 
 # ------------------ PENGINGAT HARIAN ------------------
 TODO_FILE = "todo_harian.json"
@@ -592,37 +664,25 @@ def save_todo(data):
 if "todo" not in st.session_state:
     st.session_state.todo = load_todo()
 
-if "todo_update" not in st.session_state:
-    st.session_state.todo_update = False  # flag untuk rerun todo
-
 with st.expander("Pengingat Harian"):
     tugas_baru = st.text_input("Tambah Tugas Baru:")
-    if st.button("✅ Simpan", key="btn_simpan_tugas"):
+    if st.button("✅ Simpan Tugas Baru"):
         if tugas_baru.strip():
             st.session_state.todo.append(tugas_baru.strip())
             save_todo(st.session_state.todo)
-            st.session_state.todo_update = True
+            st.success("Tugas berhasil disimpan.")
         else:
             st.warning("⚠️ Tugas tidak boleh kosong.")
 
+    # Tampilkan daftar tugas dengan tombol hapus
     for i, tugas in enumerate(st.session_state.todo):
         col1, col2 = st.columns([0.9, 0.1])
         col1.markdown(f"- {tugas}")
-        if col2.button("🗑️ Hapus", key=f"hapus_todo_{i}"):
+        if col2.button("🗑️", key=f"hapus_tugas_{i}"):
             st.session_state.todo.pop(i)
             save_todo(st.session_state.todo)
-            st.session_state.todo_update = True
-
-# Panggil rerun sekali jika ada update di laporan atau todo
-# Panggil rerun sekali jika ada update di laporan atau todo
-if st.session_state.laporan_update or st.session_state.todo_update:
-    st.session_state.laporan_update = False
-    st.session_state.todo_update = False
-    try:
-        st.runtime.scriptrunner.request_rerun()
-    except Exception as e:
-        st.error(f"Terjadi error saat reload: {e}")
-
+            st.experimental_rerun()
 # Footer
 st.markdown("---")
 st.caption("© 2025 – Kelurahan Lakessi | Dashboard Pertanian Digital oleh Dian Eka Putra")
+
